@@ -2,45 +2,47 @@ package bencode
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 )
 
 const decodeErrMsg string = "decode error: "
 
-type dataCursor struct {
-	data []byte
-	curs uint64
-}
+type Dict = map[string]interface{}
+type List = []interface{}
 
-func (dc *dataCursor) curByte() byte {
-	return dc.data[dc.curs]
-}
-
-func (dc *dataCursor) nextByte() byte {
-	return dc.data[dc.curs+1]
-}
-
-func Decode(data []byte) (interface{}, error) {
+func Decode(data []byte) (ret interface{}, err error) {
 
 	dc := dataCursor{data: data, curs: 0}
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			if dc.curs >= uint64(len(dc.data)) {
+				err = errors.New("read end of data before completion")
+			} else {
+				err = errors.New("caught panic")
+			}
+			ret = nil
+		}
+	}()
+
 	firstByte := dc.curByte()
 
 	switch firstByte {
 	case 'd':
-		d, err := decodeDict(&dc)
-		return d, err
+		ret, err = decodeDict(&dc)
 	case 'l':
-		l, err := decodeList(&dc)
-		return l, err
+		ret, err = decodeList(&dc)
+	case 'i':
+		ret, err = decodeInt(&dc)
 	default:
-		msg := fmt.Sprintf("invalid first byte [%v]", firstByte)
-		return nil, errors.New(msg)
+		ret, err = decodeString(&dc)
 	}
 
+	return ret, err
 }
 
-func decodeDict(dc *dataCursor) (map[string]interface{}, error) {
+func decodeDict(dc *dataCursor) (Dict, error) {
 
 	if dc.curByte() != 'd' {
 		return nil, errors.New(decodeErrMsg + "not pointing to dict")
@@ -82,13 +84,13 @@ func decodeDict(dc *dataCursor) (map[string]interface{}, error) {
 	return dict, nil
 }
 
-func decodeList(dc *dataCursor) ([]interface{}, error) {
+func decodeList(dc *dataCursor) (List, error) {
 	if dc.curByte() != 'l' {
 		return nil, errors.New(decodeErrMsg + "not pointing to dict")
 	}
 
 	dc.curs++
-	var list []interface{}
+	var list List
 
 	for {
 		if dc.curByte() == 'e' {
@@ -140,7 +142,7 @@ func decodeString(dc *dataCursor) (string, error) {
 
 	lenVal, err := strconv.Atoi(strLen)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	str := string(dc.data[dc.curs : dc.curs+uint64(lenVal)])
@@ -191,8 +193,24 @@ func decodeInt(dc *dataCursor) (int, error) {
 
 	val, err := strconv.Atoi(strInt)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	return val * negMult, nil
+}
+
+// ==================================================================
+// Data Cursor ======================================================
+
+type dataCursor struct {
+	data []byte
+	curs uint64
+}
+
+func (dc *dataCursor) curByte() byte {
+	return dc.data[dc.curs]
+}
+
+func (dc *dataCursor) nextByte() byte {
+	return dc.data[dc.curs+1]
 }
