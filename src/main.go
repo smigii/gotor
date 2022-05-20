@@ -21,6 +21,7 @@ func main() {
 
 }
 
+// 0x16f
 func execute() bool {
 	//fdata, err := os.ReadFile("src/bencode/test1")
 	fdata, err := os.ReadFile("torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent")
@@ -29,8 +30,11 @@ func execute() bool {
 	d, err := bencode.Decode(fdata)
 	check(err)
 
-	dict := d.(bencode.Dict)
-	fmt.Println(dict["announce"])
+	e, err := bencode.Encode(d)
+	check(err)
+
+	fmt.Println(string(e[:0x16f]))
+
 	return err == nil
 }
 
