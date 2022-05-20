@@ -12,7 +12,7 @@ type List = []interface{}
 
 func Decode(data []byte) (ret interface{}, err error) {
 
-	dc := dataCursor{data: data, curs: 0}
+	dc := decoder{data: data, curs: 0}
 
 	defer func() {
 		r := recover()
@@ -30,19 +30,19 @@ func Decode(data []byte) (ret interface{}, err error) {
 
 	switch firstByte {
 	case 'd':
-		ret, err = decodeDict(&dc)
+		ret, err = dc.decodeDict()
 	case 'l':
-		ret, err = decodeList(&dc)
+		ret, err = dc.decodeList()
 	case 'i':
-		ret, err = decodeInt(&dc)
+		ret, err = dc.decodeInt()
 	default:
-		ret, err = decodeString(&dc)
+		ret, err = dc.decodeString()
 	}
 
 	return ret, err
 }
 
-func decodeDict(dc *dataCursor) (Dict, error) {
+func (dc *decoder) decodeDict() (Dict, error) {
 
 	if dc.curByte() != 'd' {
 		return nil, errors.New(decodeErrMsg + "not pointing to dict")
@@ -57,7 +57,7 @@ func decodeDict(dc *dataCursor) (Dict, error) {
 			break
 		}
 
-		key, err := decodeString(dc)
+		key, err := dc.decodeString()
 		if err != nil {
 			panic(err)
 		}
@@ -65,14 +65,14 @@ func decodeDict(dc *dataCursor) (Dict, error) {
 		var val interface{}
 
 		switch dc.curByte() {
-		case 'i': // 'i' integer
-			val, err = decodeInt(dc)
-		case 'l': // 'l' list
-			val, err = decodeList(dc)
-		case 'd': // 'd' dict
-			val, err = decodeDict(dc)
+		case 'i':
+			val, err = dc.decodeInt()
+		case 'l':
+			val, err = dc.decodeList()
+		case 'd':
+			val, err = dc.decodeDict()
 		default: // another string
-			val, err = decodeString(dc)
+			val, err = dc.decodeString()
 		}
 
 		if err != nil {
@@ -84,7 +84,7 @@ func decodeDict(dc *dataCursor) (Dict, error) {
 	return dict, nil
 }
 
-func decodeList(dc *dataCursor) (List, error) {
+func (dc *decoder) decodeList() (List, error) {
 	if dc.curByte() != 'l' {
 		return nil, errors.New(decodeErrMsg + "not pointing to dict")
 	}
@@ -103,13 +103,13 @@ func decodeList(dc *dataCursor) (List, error) {
 
 		switch dc.curByte() {
 		case 'i': // 'i' integer
-			val, err = decodeInt(dc)
+			val, err = dc.decodeInt()
 		case 'l': // 'l' list
-			val, err = decodeList(dc)
+			val, err = dc.decodeList()
 		case 'd': // 'd' dict
-			val, err = decodeDict(dc)
+			val, err = dc.decodeDict()
 		default: // another string
-			val, err = decodeString(dc)
+			val, err = dc.decodeString()
 		}
 
 		if err != nil {
@@ -121,10 +121,7 @@ func decodeList(dc *dataCursor) (List, error) {
 	return list, nil
 }
 
-func decodeString(dc *dataCursor) (string, error) {
-	// 1. Read up to ':' for length n
-	// 2. Read n bytes for string
-
+func (dc *decoder) decodeString() (string, error) {
 	//var startIdx = dc.curs
 	var strLen string
 
@@ -151,7 +148,7 @@ func decodeString(dc *dataCursor) (string, error) {
 	return str, nil
 }
 
-func decodeInt(dc *dataCursor) (int, error) {
+func (dc *decoder) decodeInt() (int, error) {
 	// 1. Read 'i'
 	// 2. Build string until 'e'
 
@@ -199,18 +196,15 @@ func decodeInt(dc *dataCursor) (int, error) {
 	return val * negMult, nil
 }
 
-// ==================================================================
-// Data Cursor ======================================================
-
-type dataCursor struct {
+type decoder struct {
 	data []byte
 	curs uint64
 }
 
-func (dc *dataCursor) curByte() byte {
+func (dc *decoder) curByte() byte {
 	return dc.data[dc.curs]
 }
 
-func (dc *dataCursor) nextByte() byte {
+func (dc *decoder) nextByte() byte {
 	return dc.data[dc.curs+1]
 }
