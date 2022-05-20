@@ -68,6 +68,30 @@ func TestEncodeDict(t *testing.T) {
 	d := make(Dict)
 	d["key1"] = "value1"
 	d["key2"] = "value2"
-	encodeDict(d)
+	r, err := Encode(d)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(string(r))
 
+}
+
+func TestEncodeList(t *testing.T) {
+
+	l := make(List, 0, 32)
+	l = append(l, "hello")
+	l = append(l, "another")
+	l = append(l, "word")
+	l = append(l, "asd")
+	l = append(l, 123)
+	l = append(l, -123)
+	l = append(l, 0)
+	l = append(l, 5734987)
+
+	r, err := Encode(l)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Println(string(r))
 }

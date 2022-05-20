@@ -3,6 +3,7 @@ package bencode
 import (
 	"errors"
 	"fmt"
+	"sort"
 )
 
 func Encode(data interface{}) (ret []byte, err error) {
@@ -18,6 +19,12 @@ func Encode(data interface{}) (ret []byte, err error) {
 		}
 	}()
 
+	ec.encode(data)
+
+	return ec.data[0:len(ec.data)], err
+}
+
+func (ec *encoder) encode(data interface{}) {
 	switch data.(type) {
 	case string:
 		ec.encodeString(data.(string))
@@ -30,33 +37,52 @@ func Encode(data interface{}) (ret []byte, err error) {
 	case int32:
 		ec.encodeInt(int64(data.(int32)))
 	case int64:
-		ec.encodeInt(int64(data.(int64)))
+		ec.encodeInt(data.(int64))
+	case Dict:
+		ec.encodeDict(data.(Dict))
+	case List:
+		ec.encodeList(data.(List))
 	default:
-		ret = []byte{}
-		err = errors.New("unknown type")
+		panic("unknown type")
 	}
-
-	return ec.data[0:len(ec.data)], err
 }
 
 func (ec *encoder) encodeString(str string) {
 	encStr := fmt.Sprintf("%v:%v", len(str), str)
-	ec.copy([]byte(encStr))
+	ec.write([]byte(encStr))
 }
 
 func (ec *encoder) encodeInt(i int64) {
 	encStr := []byte(fmt.Sprintf("i%ve", i))
-	ec.copy(encStr)
+	ec.write(encStr)
 }
 
-func encodeDict(dict Dict) []byte {
-	keys := make([]interface{}, 0, len(dict))
+func (ec *encoder) encodeDict(dict Dict) {
+	ec.write([]byte{'d'})
+
+	keys := make([]string, 0, len(dict))
 	for k := range dict {
 		keys = append(keys, k)
 	}
-	fmt.Println(keys)
+	// Keys must be sorted as per bencode spec
+	sort.Strings(keys)
 
-	return []byte{}
+	for _, key := range keys {
+		ec.encodeString(key)
+		ec.encode(dict[key])
+	}
+
+	ec.write([]byte{'e'})
+}
+
+func (ec *encoder) encodeList(list List) {
+	ec.write([]byte{'l'})
+
+	for _, val := range list {
+		ec.encode(val)
+	}
+
+	ec.write([]byte{'e'})
 }
 
 type encoder struct {
@@ -69,7 +95,7 @@ func newEncoder() *encoder {
 	}
 }
 
-func (ec *encoder) copy(bstr []byte) {
+func (ec *encoder) write(bstr []byte) {
 	bstrLen := uint64(len(bstr))
 	newLen := uint64(len(ec.data)) + bstrLen
 	curCap := uint64(cap(ec.data))
@@ -84,7 +110,7 @@ func (ec *encoder) copy(bstr []byte) {
 		}
 
 		newSlice := make([]byte, 0, newCap)
-		copy(newSlice, ec.data)
+		newSlice = append(newSlice, ec.data...)
 		ec.data = newSlice
 	}
 
