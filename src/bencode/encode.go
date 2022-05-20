@@ -7,7 +7,7 @@ import (
 
 func Encode(data interface{}) (ret []byte, err error) {
 
-	//ec := encoder{data: data}
+	ec := newEncoder()
 	err = nil
 
 	defer func() {
@@ -20,34 +20,73 @@ func Encode(data interface{}) (ret []byte, err error) {
 
 	switch data.(type) {
 	case string:
-		ret = encodeString(data.(string))
+		ec.encodeString(data.(string))
 	case int:
-		ret = encodeInt(int64(data.(int)))
+		ec.encodeInt(int64(data.(int)))
 	case int8:
-		ret = encodeInt(int64(data.(int8)))
+		ec.encodeInt(int64(data.(int8)))
 	case int16:
-		ret = encodeInt(int64(data.(int16)))
+		ec.encodeInt(int64(data.(int16)))
 	case int32:
-		ret = encodeInt(int64(data.(int32)))
+		ec.encodeInt(int64(data.(int32)))
 	case int64:
-		ret = encodeInt(int64(data.(int64)))
+		ec.encodeInt(int64(data.(int64)))
 	default:
 		ret = []byte{}
 		err = errors.New("unknown type")
 	}
 
-	return ret, err
-
+	return ec.data[0:len(ec.data)], err
 }
 
-func encodeString(str string) []byte {
-	return []byte(fmt.Sprintf("%v:%v", len(str), str))
+func (ec *encoder) encodeString(str string) {
+	encStr := fmt.Sprintf("%v:%v", len(str), str)
+	ec.copy([]byte(encStr))
 }
 
-func encodeInt(i int64) []byte {
-	return []byte(fmt.Sprintf("i%ve", i))
+func (ec *encoder) encodeInt(i int64) {
+	encStr := []byte(fmt.Sprintf("i%ve", i))
+	ec.copy(encStr)
+}
+
+func encodeDict(dict Dict) []byte {
+	keys := make([]interface{}, 0, len(dict))
+	for k := range dict {
+		keys = append(keys, k)
+	}
+	fmt.Println(keys)
+
+	return []byte{}
 }
 
 type encoder struct {
-	data interface{}
+	data []byte
+}
+
+func newEncoder() *encoder {
+	return &encoder{
+		data: make([]byte, 0, 16),
+	}
+}
+
+func (ec *encoder) copy(bstr []byte) {
+	bstrLen := uint64(len(bstr))
+	newLen := uint64(len(ec.data)) + bstrLen
+	curCap := uint64(cap(ec.data))
+
+	if newLen >= curCap {
+		newCap := curCap << 1
+		for {
+			if newCap > newLen {
+				break
+			}
+			newCap <<= 1
+		}
+
+		newSlice := make([]byte, 0, newCap)
+		copy(newSlice, ec.data)
+		ec.data = newSlice
+	}
+
+	ec.data = append(ec.data, bstr...)
 }

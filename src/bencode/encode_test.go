@@ -62,3 +62,12 @@ func TestEncodeInt(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeDict(t *testing.T) {
+
+	d := make(Dict)
+	d["key1"] = "value1"
+	d["key2"] = "value2"
+	encodeDict(d)
+
+}
