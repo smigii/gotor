@@ -22,15 +22,15 @@ func main() {
 }
 
 func execute() bool {
-	fdata, err := os.ReadFile("src/bencode/test1")
-	//fdata, err := os.ReadFile("torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent")
+	//fdata, err := os.ReadFile("src/bencode/test1")
+	fdata, err := os.ReadFile("torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent")
 	check(err)
 
 	d, err := bencode.Decode(fdata)
 	check(err)
 
 	dict := d.(bencode.Dict)
-	fmt.Println(dict["key"])
+	fmt.Println(dict["announce"])
 	return err == nil
 }
 
