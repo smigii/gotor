@@ -1,33 +1,44 @@
 package bencode
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 )
 
-func Encode(data interface{}) (ret []byte, err error) {
+// ============================================================================
+// Error ======================================================================
 
+type EncoderError struct{ msg string }
+
+func (ee *EncoderError) Error() string {
+	return "encoder error: " + ee.msg
+}
+
+// ============================================================================
+// Public =====================================================================
+
+func Encode(data interface{}) (ret []byte, err error) {
 	ec := newEncoder()
-	err = nil
 
 	defer func() {
-		r := recover()
-		if r != nil {
-			err = errors.New("caught panic")
+		if r := recover(); r != nil {
+			err = &EncoderError{fmt.Sprintf("caught panic [%v]", r)}
 			ret = nil
 		}
 	}()
 
-	ec.encode(data)
-
-	return ec.data[0:len(ec.data)], err
+	err = ec.encode(data)
+	return ec.result(), err
 }
 
-func (ec *encoder) encode(data interface{}) {
+// ============================================================================
+// Private ====================================================================
+
+func (ec *encoder) encode(data interface{}) error {
+	var err error
 	switch data.(type) {
 	case string:
-		ec.encodeString(data.(string))
+		err = ec.encodeString(data.(string))
 	case int:
 		ec.encodeInt(int64(data.(int)))
 	case int8:
@@ -39,17 +50,22 @@ func (ec *encoder) encode(data interface{}) {
 	case int64:
 		ec.encodeInt(data.(int64))
 	case Dict:
-		ec.encodeDict(data.(Dict))
+		err = ec.encodeDict(data.(Dict))
 	case List:
-		ec.encodeList(data.(List))
+		err = ec.encodeList(data.(List))
 	default:
-		panic("unknown type")
+		return &EncoderError{fmt.Sprintf("unsupported bencoding type [%T]", data)}
 	}
+	return err
 }
 
-func (ec *encoder) encodeString(str string) {
+func (ec *encoder) encodeString(str string) error {
+	if len(str) == 0 {
+		return &EncoderError{"cannot encode an empty string"}
+	}
 	encStr := fmt.Sprintf("%v:%v", len(str), str)
 	ec.write([]byte(encStr))
+	return nil
 }
 
 func (ec *encoder) encodeInt(i int64) {
@@ -57,33 +73,48 @@ func (ec *encoder) encodeInt(i int64) {
 	ec.write(encStr)
 }
 
-func (ec *encoder) encodeDict(dict Dict) {
+func (ec *encoder) encodeDict(dict Dict) error {
 	ec.write([]byte{'d'})
 
 	keys := make([]string, 0, len(dict))
 	for k := range dict {
 		keys = append(keys, k)
 	}
+
 	// Keys must be sorted as per bencode spec
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		ec.encodeString(key)
-		ec.encode(dict[key])
+		err := ec.encodeString(key)
+		if err != nil {
+			return err
+		}
+		err = ec.encode(dict[key])
+		if err != nil {
+			return err
+		}
 	}
 
 	ec.write([]byte{'e'})
+	return nil
 }
 
-func (ec *encoder) encodeList(list List) {
+func (ec *encoder) encodeList(list List) error {
 	ec.write([]byte{'l'})
 
 	for _, val := range list {
-		ec.encode(val)
+		err := ec.encode(val)
+		if err != nil {
+			return err
+		}
 	}
 
 	ec.write([]byte{'e'})
+	return nil
 }
+
+// ============================================================================
+// Encoder Struct =============================================================
 
 type encoder struct {
 	data []byte
@@ -91,7 +122,7 @@ type encoder struct {
 
 func newEncoder() *encoder {
 	return &encoder{
-		data: make([]byte, 0, 16),
+		data: make([]byte, 0, 32),
 	}
 }
 
@@ -100,6 +131,7 @@ func (ec *encoder) write(bstr []byte) {
 	newLen := uint64(len(ec.data)) + bstrLen
 	curCap := uint64(cap(ec.data))
 
+	// Check if we need to resize
 	if newLen >= curCap {
 		newCap := curCap << 1
 		for {
@@ -115,4 +147,8 @@ func (ec *encoder) write(bstr []byte) {
 	}
 
 	ec.data = append(ec.data, bstr...)
+}
+
+func (ec *encoder) result() []byte {
+	return ec.data[0:len(ec.data)]
 }
