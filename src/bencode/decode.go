@@ -1,14 +1,27 @@
 package bencode
 
 import (
-	"errors"
 	"strconv"
 )
 
-const decodeErrMsg string = "decode error: "
+// ============================================================================
+// Error ======================================================================
+
+type DecoderError struct{ msg string }
+
+func (de *DecoderError) Error() string {
+	return "decoder error: " + de.msg
+}
+
+// ============================================================================
+// Types ======================================================================
 
 type Dict = map[string]interface{}
+
 type List = []interface{}
+
+// ============================================================================
+// Public =====================================================================
 
 func Decode(data []byte) (ret interface{}, err error) {
 
@@ -18,9 +31,9 @@ func Decode(data []byte) (ret interface{}, err error) {
 		r := recover()
 		if r != nil {
 			if dc.curs >= uint64(len(dc.data)) {
-				err = errors.New("read end of data before completion")
+				err = &DecoderError{"read end of data before completion"}
 			} else {
-				err = errors.New("caught panic")
+				err = &DecoderError{"caught panic"}
 			}
 			ret = nil
 		}
@@ -42,10 +55,13 @@ func Decode(data []byte) (ret interface{}, err error) {
 	return ret, err
 }
 
+// ============================================================================
+// Private ====================================================================
+
 func (dc *decoder) decodeDict() (Dict, error) {
 
 	if dc.curByte() != 'd' {
-		return nil, errors.New(decodeErrMsg + "not pointing to dict")
+		return nil, &DecoderError{"not pointing to dict"}
 	}
 
 	dc.curs++
@@ -59,7 +75,7 @@ func (dc *decoder) decodeDict() (Dict, error) {
 
 		key, err := dc.decodeString()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		var val interface{}
@@ -76,7 +92,7 @@ func (dc *decoder) decodeDict() (Dict, error) {
 		}
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		dict[key] = val
 	}
@@ -86,7 +102,7 @@ func (dc *decoder) decodeDict() (Dict, error) {
 
 func (dc *decoder) decodeList() (List, error) {
 	if dc.curByte() != 'l' {
-		return nil, errors.New(decodeErrMsg + "not pointing to dict")
+		return nil, &DecoderError{"not pointing to dict"}
 	}
 
 	dc.curs++
@@ -113,7 +129,7 @@ func (dc *decoder) decodeList() (List, error) {
 		}
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		list = append(list, val)
 	}
@@ -122,7 +138,6 @@ func (dc *decoder) decodeList() (List, error) {
 }
 
 func (dc *decoder) decodeString() (string, error) {
-	//var startIdx = dc.curs
 	var strLen string
 
 	for {
@@ -133,7 +148,7 @@ func (dc *decoder) decodeString() (string, error) {
 			dc.curs++
 			break
 		} else {
-			return "", errors.New(decodeErrMsg + "bad string at byte " + strconv.FormatUint(dc.curs, 10))
+			return "", &DecoderError{"bad string at byte " + strconv.FormatUint(dc.curs, 10)}
 		}
 	}
 
@@ -153,7 +168,7 @@ func (dc *decoder) decodeInt() (int, error) {
 	// 2. Build string until 'e'
 
 	if dc.curByte() != 'i' {
-		return 0, errors.New("invalid call to decodeInt, not pointing at 'i'")
+		return 0, &DecoderError{"invalid call to decodeInt, not pointing at 'i'"}
 	}
 
 	dc.curs++
@@ -171,7 +186,7 @@ func (dc *decoder) decodeInt() (int, error) {
 		strInt += string(dc.curByte())
 		dc.curs++
 		if dc.curByte() != 'e' {
-			return 0, errors.New(decodeErrMsg + "bad int (leading 0s) at byte " + strconv.FormatUint(dc.curs, 10))
+			return 0, &DecoderError{"bad int (leading 0s) at byte " + strconv.FormatUint(dc.curs, 10)}
 		}
 	}
 
@@ -184,7 +199,7 @@ func (dc *decoder) decodeInt() (int, error) {
 			dc.curs++
 			break
 		} else {
-			return 0, errors.New(decodeErrMsg + "bad int at byte " + strconv.FormatUint(dc.curs, 10))
+			return 0, &DecoderError{"bad int at byte " + strconv.FormatUint(dc.curs, 10)}
 		}
 	}
 
@@ -195,6 +210,9 @@ func (dc *decoder) decodeInt() (int, error) {
 
 	return val * negMult, nil
 }
+
+// ============================================================================
+// Decoder Struct =============================================================
 
 type decoder struct {
 	data []byte
