@@ -26,7 +26,7 @@ type Torrent struct {
 
 type TorrentFileEntry struct {
 	length uint64
-	path   string
+	path   []string
 }
 
 func NewTorrent(path string) (*Torrent, error) {
@@ -103,27 +103,40 @@ func NewTorrent(path string) (*Torrent, error) {
 		}
 
 		// Read through list of file dictionaries
-		for _, f := range files {
-			fdict, ok := f.(bencode.Dict)
+		tor.files = make([]TorrentFileEntry, 0, 8)
+		for _, fEntry := range files {
+			fDict, ok := fEntry.(bencode.Dict)
 			if !ok {
 				return nil, &TorrentError{
-					msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", f),
+					msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
 				}
 			}
-			fLen, err := fdict.GetUint("length")
+			fLen, err := fDict.GetUint("length")
 			if err != nil {
 				return nil, err
 			}
-			fPath, err := fdict.GetString("path")
+			fPathList, err := fDict.GetList("path")
 			if err != nil {
 				return nil, err
 			}
+
+			// Read through list of path strings
+			pathPieces := make([]string, 0, 2)
+			for _, fPathEntry := range fPathList {
+				pathPiece, ok := fPathEntry.(string)
+				if !ok {
+					return nil, &TorrentError{
+						msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
+					}
+				}
+				pathPieces = append(pathPieces, pathPiece)
+			}
+
 			tor.files = append(tor.files, TorrentFileEntry{
 				length: fLen,
-				path:   fPath,
+				path:   pathPieces,
 			})
 		}
-
 	}
 
 	return &tor, nil

@@ -1,24 +1,51 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"testing"
 )
 
 func TestTorrent(t *testing.T) {
 
-	// INFO HASH: f09c8d0884590088f4004e010a928f8b6178c2fd
-	tor, err := NewTorrent("../torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent")
+	err := testTorrent(
+		"../torrents/flowers.torrent",
+		"https://sometrackerthatdoesntexist.com/announce",
+		"9ac55b9c736b1f97d510d7c53c7b6210421cbd06",
+	)
+
 	if err != nil {
 		t.Error(err)
 	}
 
-	//fmt.Println("f09c8d0884590088f4004e010a928f8b6178c2fd")
-	//fmt.Println(tor)
-	fmt.Println(tor.announce)
+	err = testTorrent(
+		"../torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent",
+		"https://torrent.ubuntu.com/announce",
+		"f09c8d0884590088f4004e010a928f8b6178c2fd",
+	)
 
-	x := "hello"
-	y := x
-	fmt.Printf("%p\n%p\n", &x, &y)
+	if err != nil {
+		t.Error(err)
+	}
+}
 
+func testTorrent(path string, announce string, infohash string) error {
+	tor, err := NewTorrent(path)
+
+	if err != nil {
+		return err
+	}
+
+	if tor.announce != announce {
+		return fmt.Errorf("bad announce\nexpected [%v]\ngot      [%v]", announce, tor.announce)
+	}
+
+	trueHashBytes, _ := hex.DecodeString(infohash)
+	trueHashString := string(trueHashBytes)
+
+	if tor.infohash != trueHashString {
+		return fmt.Errorf("bad infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.infohash)))
+	}
+
+	return nil
 }
