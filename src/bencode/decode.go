@@ -14,13 +14,6 @@ func (de *DecoderError) Error() string {
 }
 
 // ============================================================================
-// Types ======================================================================
-
-type Dict = map[string]interface{}
-
-type List = []interface{}
-
-// ============================================================================
 // Public =====================================================================
 
 func Decode(data []byte) (ret interface{}, err error) {
@@ -163,7 +156,7 @@ func (dc *decoder) decodeString() (string, error) {
 	return str, nil
 }
 
-func (dc *decoder) decodeInt() (int, error) {
+func (dc *decoder) decodeInt() (int64, error) {
 	// 1. Read 'i'
 	// 2. Build string until 'e'
 
@@ -173,7 +166,7 @@ func (dc *decoder) decodeInt() (int, error) {
 
 	dc.curs++
 	var strInt string
-	negMult := 1
+	negMult := int64(1)
 
 	// Handle negative ints
 	if dc.curByte() == '-' {
@@ -203,7 +196,7 @@ func (dc *decoder) decodeInt() (int, error) {
 		}
 	}
 
-	val, err := strconv.Atoi(strInt)
+	val, err := strconv.ParseInt(strInt, 10, 64)
 	if err != nil {
 		return 0, err
 	}

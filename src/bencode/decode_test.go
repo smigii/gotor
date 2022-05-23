@@ -72,7 +72,7 @@ func TestDecodeString(t *testing.T) {
 
 func TestDecodeInt(t *testing.T) {
 	// Test good ints
-	ints := []int{
+	ints := []int64{
 		0,
 		1,
 		-1,
@@ -97,7 +97,7 @@ func TestDecodeInt(t *testing.T) {
 			t.Error(err)
 		}
 
-		res, ok := r.(int)
+		res, ok := r.(int64)
 		if !ok {
 			t.Errorf("Failed converting to int: %v", r)
 		}
@@ -166,12 +166,12 @@ func TestDecodeDict(t *testing.T) {
 
 	checkKey(dict1, "key1", "value1", t)
 	checkKey(dict1, "key2", "value2", t)
-	checkKey(dict1, "key3", 3, t)
-	checkKey(dict1, "key4", 4, t)
-	checkKey(dict2, "key5", 5, t)
-	checkKey(dict2, "key6", 6, t)
-	checkKey(dict3, "key7", 7, t)
-	checkKey(dict4, "key8", 8, t)
+	checkKey(dict1, "key3", int64(3), t)
+	checkKey(dict1, "key4", int64(4), t)
+	checkKey(dict2, "key5", int64(5), t)
+	checkKey(dict2, "key6", int64(6), t)
+	checkKey(dict3, "key7", int64(7), t)
+	checkKey(dict4, "key8", int64(8), t)
 }
 
 func checkOk(ok bool, msg string, t *testing.T) {
@@ -224,7 +224,7 @@ func TestDecodeList(t *testing.T) {
 	checkOk(ok, "Failed converting list 4", t)
 
 	checkVal(list1, 0, "e1", t)
-	checkVal(list1, 5, 6, t)
+	checkVal(list1, 5, int64(6), t)
 	checkVal(list2, 0, "e7", t)
 	checkVal(list3, 0, "e8", t)
 	checkVal(list4, 0, "e9", t)
