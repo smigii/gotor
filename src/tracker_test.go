@@ -36,15 +36,15 @@ func testTorrent(path string, announce string, infohash string) error {
 		return err
 	}
 
-	if tor.announce != announce {
-		return fmt.Errorf("bad announce\nexpected [%v]\ngot      [%v]", announce, tor.announce)
+	if tor.Announce != announce {
+		return fmt.Errorf("bad Announce\nexpected [%v]\ngot      [%v]", announce, tor.Announce)
 	}
 
 	trueHashBytes, _ := hex.DecodeString(infohash)
 	trueHashString := string(trueHashBytes)
 
-	if tor.infohash != trueHashString {
-		return fmt.Errorf("bad infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.infohash)))
+	if tor.Infohash != trueHashString {
+		return fmt.Errorf("bad Infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.Infohash)))
 	}
 
 	return nil

@@ -14,14 +14,14 @@ func (te *TorrentError) Error() string {
 }
 
 type Torrent struct {
-	infohash string
-	announce string
-	name     string
-	pieceLen uint64
-	pieces   string
-	nPieces  uint64
-	length   uint64
-	files    []TorrentFileEntry
+	Infohash  string
+	Announce  string
+	Name      string
+	PieceLen  uint64
+	pieces    string
+	NumPieces uint64
+	Length    uint64
+	Files     []TorrentFileEntry
 }
 
 type TorrentFileEntry struct {
@@ -51,7 +51,7 @@ func NewTorrent(path string) (*Torrent, error) {
 		}
 	}
 
-	tor.announce, err = dict.GetString("announce")
+	tor.Announce, err = dict.GetString("announce")
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +61,12 @@ func NewTorrent(path string) (*Torrent, error) {
 		return nil, err
 	}
 
-	tor.name, err = info.GetString("name")
+	tor.Name, err = info.GetString("name")
 	if err != nil {
 		return nil, err
 	}
 
-	tor.pieceLen, err = info.GetUint("piece length")
+	tor.PieceLen, err = info.GetUint("piece length")
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func NewTorrent(path string) (*Torrent, error) {
 	hasher := sha1.New()
 	enc, _ := bencode.Encode(info)
 	hasher.Write(enc)
-	tor.infohash = string(hasher.Sum(nil))
+	tor.Infohash = string(hasher.Sum(nil))
 
 	// Pieces
 	tor.pieces, err = info.GetString("pieces")
@@ -88,10 +88,10 @@ func NewTorrent(path string) (*Torrent, error) {
 			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(tor.pieces)),
 		}
 	}
-	tor.nPieces = uint64(len(tor.pieces) / 20)
+	tor.NumPieces = uint64(len(tor.pieces) / 20)
 
 	// Length string XOR Files dictionary
-	tor.length, err = info.GetUint("length")
+	tor.Length, err = info.GetUint("length")
 	if err != nil {
 
 		// Try 'files'
@@ -103,7 +103,7 @@ func NewTorrent(path string) (*Torrent, error) {
 		}
 
 		// Read through list of file dictionaries
-		tor.files = make([]TorrentFileEntry, 0, 8)
+		tor.Files = make([]TorrentFileEntry, 0, 8)
 		for _, fEntry := range files {
 			fDict, ok := fEntry.(bencode.Dict)
 			if !ok {
@@ -132,7 +132,7 @@ func NewTorrent(path string) (*Torrent, error) {
 				pathPieces = append(pathPieces, pathPiece)
 			}
 
-			tor.files = append(tor.files, TorrentFileEntry{
+			tor.Files = append(tor.Files, TorrentFileEntry{
 				length: fLen,
 				path:   pathPieces,
 			})
@@ -143,9 +143,9 @@ func NewTorrent(path string) (*Torrent, error) {
 }
 
 func (tor *Torrent) GetPiece(idx uint64) (string, error) {
-	if idx >= tor.nPieces {
+	if idx >= tor.NumPieces {
 		return "", &TorrentError{
-			msg: fmt.Sprintf("requested piece index [%v], only have [%v]", idx, tor.nPieces),
+			msg: fmt.Sprintf("requested piece index [%v], only have [%v]", idx, tor.NumPieces),
 		}
 	}
 
