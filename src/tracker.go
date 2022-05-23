@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"gotor/bencode"
 	"os"
+	"strings"
 )
 
 type TorrentError struct{ msg string }
@@ -115,6 +117,7 @@ func NewTorrent(path string) (*Torrent, error) {
 			if err != nil {
 				return nil, err
 			}
+			tor.Length += fLen
 			fPathList, err := fDict.GetList("path")
 			if err != nil {
 				return nil, err
@@ -151,4 +154,24 @@ func (tor *Torrent) GetPiece(idx uint64) (string, error) {
 
 	offset := idx * 20
 	return tor.pieces[offset:20], nil
+}
+
+func (tor *Torrent) QuickStats() string {
+	builder := strings.Builder{}
+	prettyHash := hex.EncodeToString([]byte(tor.Infohash))
+	builder.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.Name))
+	builder.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.Announce))
+	builder.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
+	bsize, units := Bytes4Humans(tor.Length)
+	builder.WriteString(fmt.Sprintf("   Length: [%.02f %v]\n", bsize, units))
+
+	if tor.Files != nil {
+		builder.WriteString("\nFiles:\n")
+		for _, p := range tor.Files {
+			builder.WriteString(strings.Join(p.path, "/"))
+			builder.WriteByte('\n')
+		}
+	}
+
+	return builder.String()
 }
