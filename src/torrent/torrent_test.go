@@ -1,4 +1,4 @@
-package main
+package torrent
 
 import (
 	"encoding/hex"
@@ -36,15 +36,15 @@ func testTorrent(path string, announce string, infohash string) error {
 		return err
 	}
 
-	if tor.Announce != announce {
-		return fmt.Errorf("bad Announce\nexpected [%v]\ngot      [%v]", announce, tor.Announce)
+	if tor.announce != announce {
+		return fmt.Errorf("bad Announce\nexpected [%v]\ngot      [%v]", announce, tor.announce)
 	}
 
 	trueHashBytes, _ := hex.DecodeString(infohash)
 	trueHashString := string(trueHashBytes)
 
-	if tor.Infohash != trueHashString {
-		return fmt.Errorf("bad Infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.Infohash)))
+	if tor.infohash != trueHashString {
+		return fmt.Errorf("bad Infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.infohash)))
 	}
 
 	return nil
