@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -44,4 +45,10 @@ func Spinner(done chan bool, msg string) {
 			}
 		}
 	}
+}
+
+// PrettyPrint A quick pretty printer for struct
+func PrettyPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	return string(s)
 }

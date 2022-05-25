@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // ============================================================================
@@ -188,4 +189,24 @@ func newResponse(dict bencode.Dict) (*Resp, error) {
 	}
 
 	return &resp, nil
+}
+
+func (r *Resp) Pretty() string {
+	strb := strings.Builder{}
+	strb.WriteString("Resp: {\n")
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Seeders", r.seeders))
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Leechers", r.leechers))
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Interval", r.interval))
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Warning", r.warning))
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Tracker ID", r.tid))
+	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Min Interval", r.minInterval))
+	strb.WriteString("\tPeer List:")
+	for i, v := range r.peers {
+		if i%5 == 0 {
+			strb.WriteString("\n\t\t")
+		}
+		strb.WriteString(fmt.Sprintf("(%v:%v) ", v.ip, v.port))
+	}
+	strb.WriteString("\n}\n")
+	return strb.String()
 }

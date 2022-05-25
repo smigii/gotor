@@ -46,7 +46,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(resp.Interval())
+	fmt.Println(resp.Pretty())
 
 	fmt.Println("DONE")
 
