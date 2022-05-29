@@ -8,7 +8,7 @@ import (
 
 func TestBencode(t *testing.T) {
 
-	fdata, err := os.ReadFile("../../torrents/ubuntu-20.04.4-desktop-amd64.iso.torrent")
+	fdata, err := os.ReadFile("../../test_media/ubuntu-20.04.4-desktop-amd64.iso.torrent")
 	if err != nil {
 		t.Error(err)
 	}

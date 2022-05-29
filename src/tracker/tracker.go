@@ -3,7 +3,9 @@ package tracker
 import (
 	"fmt"
 	"gotor/bencode"
+	"gotor/peer"
 	"gotor/torrent"
+	"gotor/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -29,13 +31,7 @@ type Resp struct {
 	tid         string
 	seeders     uint64
 	leechers    uint64
-	peers       []Peer
-}
-
-type Peer struct {
-	id   string
-	ip   string
-	port uint16
+	peerList    []*peer.Peer
 }
 
 // ============================================================================
@@ -65,8 +61,8 @@ func (r Resp) Leechers() uint64 {
 	return r.leechers
 }
 
-func (r Resp) Peers() []Peer {
-	return r.peers
+func (r Resp) Peers() []*peer.Peer {
+	return r.peerList
 }
 
 // ============================================================================
@@ -78,13 +74,13 @@ func Request(tor *torrent.Torrent) (*Resp, error) {
 	req, _ := http.NewRequest("GET", tor.Announce(), nil)
 	query := req.URL.Query()
 	query.Add("info_hash", tor.Infohash())
-	query.Add("peer_id", url.QueryEscape("G0T0R-fdhas93hlsaf83"))
+	query.Add("peer_id", url.QueryEscape(utils.GotorPeerString+"has93hlsaf83"))
 	query.Add("port", "30666")
 	query.Add("uploaded", fmt.Sprintf("%v", tor.Uploaded()))
 	query.Add("downloaded", fmt.Sprintf("%v", tor.Dnloaded()))
 	query.Add("left", fmt.Sprintf("%v", tor.Length()))
 	req.URL.RawQuery = query.Encode()
-	//fmt.Println("\nFull URL: ", req.URL)
+	fmt.Println("\nFull URL: ", req.URL)
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -149,7 +145,7 @@ func newResponse(dict bencode.Dict) (*Resp, error) {
 		return nil, err
 	}
 	// 50 peers are returned by default
-	resp.peers = make([]Peer, 0, 50)
+	resp.peerList = make([]*peer.Peer, 0, 50)
 	for _, p := range peerList {
 		peerDict, ok := p.(bencode.Dict)
 		if !ok {
@@ -170,11 +166,7 @@ func newResponse(dict bencode.Dict) (*Resp, error) {
 			return nil, err
 		}
 
-		resp.peers = append(resp.peers, Peer{
-			id:   id,
-			ip:   ip,
-			port: uint16(port),
-		})
+		resp.peerList = append(resp.peerList, peer.NewPeer(id, ip, uint16(port)))
 	}
 
 	// Optional fields
@@ -200,12 +192,12 @@ func (r *Resp) Pretty() string {
 	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Warning", r.warning))
 	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Tracker ID", r.tid))
 	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Min Interval", r.minInterval))
-	strb.WriteString("\tPeer List:")
-	for i, v := range r.peers {
+	strb.WriteString(fmt.Sprintf("\tPeer List (%v):", len(r.peerList)))
+	for i, v := range r.peerList {
 		if i%5 == 0 {
 			strb.WriteString("\n\t\t")
 		}
-		strb.WriteString(fmt.Sprintf("(%v:%v) ", v.ip, v.port))
+		strb.WriteString(fmt.Sprintf("(%v:%v) ", v.Ip(), v.Port()))
 	}
 	strb.WriteString("\n}\n")
 	return strb.String()

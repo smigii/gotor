@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var GotorPeerString string = "-GT0000-"
+
 // Bytes4Humans Turns a number of bytes into human-readable number and units.
 // Returns the converted number and string representing units
 func Bytes4Humans(nbytes uint64) (float64, string) {
