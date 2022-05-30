@@ -15,12 +15,16 @@ func TestTorrent(t *testing.T) {
 
 	tests := []testEntry{
 		{
-			path:     "../../test_media/flowers.torrent",
-			infohash: "9ac55b9c736b1f97d510d7c53c7b6210421cbd06",
+			path:     "../../test_media/multifile.torrent",
+			infohash: "b253474bd8536994e4ea9e0786a4e0ea528e2530",
 		},
 		{
-			path:     "../../test_media/ubuntu-20.04.4-desktop-amd64.iso.torrent",
-			infohash: "f09c8d0884590088f4004e010a928f8b6178c2fd",
+			path:     "../../test_media/medfile.torrent",
+			infohash: "a554b7cc4616ae2fce43fabe9a7fe931aff5d85c",
+		},
+		{
+			path:     "../../test_media/bigfile.torrent",
+			infohash: "658a9fbffae3c07e2320b7c4b144da978296dcc7",
 		},
 	}
 
@@ -29,7 +33,6 @@ func TestTorrent(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-
 	}
 
 }
