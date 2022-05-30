@@ -6,6 +6,6 @@ import (
 
 func TestSwarm(t *testing.T) {
 
-	Swarm()
+	//Swarm()
 
 }

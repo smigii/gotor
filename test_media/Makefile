@@ -16,3 +16,6 @@ multifile.torrent: multifile
 	tar cfz multifile.tgz multifile
 	$(TOR_CMD) multifile
 
+.PHONY:
+clean:
+	rm *.torrent

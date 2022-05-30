@@ -1,8 +1,10 @@
 package peer
 
+import "net"
+
 type Peer struct {
 	id           string
-	ip           string
+	ip           net.IP
 	port         uint16
 	chokingUs    bool // Peer is choking us
 	weChoking    bool // We are choking peer
@@ -10,7 +12,7 @@ type Peer struct {
 	weInterested bool // We are interested in peer
 }
 
-func NewPeer(id string, ip string, port uint16) *Peer {
+func NewPeer(id string, ip net.IP, port uint16) *Peer {
 	return &Peer{
 		id:           id,
 		ip:           ip,
@@ -26,7 +28,7 @@ func (p Peer) Id() string {
 	return p.id
 }
 
-func (p Peer) Ip() string {
+func (p Peer) Ip() net.IP {
 	return p.ip
 }
 

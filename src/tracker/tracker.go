@@ -1,12 +1,13 @@
 package tracker
 
 import (
+	"encoding/binary"
 	"fmt"
 	"gotor/bencode"
 	"gotor/peer"
 	"gotor/torrent"
 	"gotor/utils"
-	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -68,51 +69,22 @@ func (r Resp) Peers() []*peer.Peer {
 // ============================================================================
 // FUNK =======================================================================
 
-func Request(tor *torrent.Torrent) (*Resp, error) {
-	// https://torrent.ubuntu.com/announce?info_hash=%F0%9C%8D%08%84Y%00%88%F4%00N%01%0A%92%8F%8Bax%C2%FD&peer_id=shf74nfdhas93hlsaf83&port=0&uploaded=0&downloaded=0&left=0
-	client := http.Client{}
+func Request(tor *torrent.Torrent, port uint16) *http.Request {
+	//client := http.Client{}
 	req, _ := http.NewRequest("GET", tor.Announce(), nil)
 	query := req.URL.Query()
 	query.Add("info_hash", tor.Infohash())
 	query.Add("peer_id", url.QueryEscape(utils.GotorPeerString+"has93hlsaf83"))
-	query.Add("port", "30666")
+	query.Add("port", fmt.Sprintf("%v", port))
 	query.Add("uploaded", fmt.Sprintf("%v", tor.Uploaded()))
 	query.Add("downloaded", fmt.Sprintf("%v", tor.Dnloaded()))
 	query.Add("left", fmt.Sprintf("%v", tor.Length()))
+	query.Add("compact", "1") // For compact peer list (BEP_0023)
 	req.URL.RawQuery = query.Encode()
-	fmt.Println("\nFull URL: ", req.URL)
-	resp, err := client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	ben, err := bencode.Decode(body)
-	if err != nil {
-		return nil, err
-	}
-
-	dict, ok := ben.(bencode.Dict)
-	if !ok {
-		return nil, &Error{
-			msg: fmt.Sprintf("response not a bencoded dictionary\n%v", body),
-		}
-	}
-
-	tresp, err := newResponse(dict)
-	if err != nil {
-		return nil, err
-	} else {
-		return tresp, nil
-	}
+	return req
 }
 
-func newResponse(dict bencode.Dict) (*Resp, error) {
+func NewResponse(dict bencode.Dict) (*Resp, error) {
 	resp := Resp{}
 
 	// Required fields
@@ -140,33 +112,26 @@ func newResponse(dict bencode.Dict) (*Resp, error) {
 	resp.leechers = leeches
 
 	// Peer List
-	peerList, err := dict.GetList("peers")
-	if err != nil {
-		return nil, err
-	}
 	// 50 peers are returned by default
 	resp.peerList = make([]*peer.Peer, 0, 50)
-	for _, p := range peerList {
-		peerDict, ok := p.(bencode.Dict)
-		if !ok {
-			return nil, &Error{
-				msg: fmt.Sprintf("invalid peer list\n[%v]", peerList),
-			}
-		}
-		ip, err := peerDict.GetString("ip")
-		if err != nil {
-			return nil, err
-		}
-		port, err := peerDict.GetUint("port")
-		if err != nil {
-			return nil, err
-		}
-		id, err := peerDict.GetString("peer id")
-		if err != nil {
-			return nil, err
-		}
 
-		resp.peerList = append(resp.peerList, peer.NewPeer(id, ip, uint16(port)))
+	// Most trackers should be returning compact peer list, try that first
+	compactPeerString, err := dict.GetString("peers")
+	if err == nil {
+		err = resp.AddPeersFromCompactString(compactPeerString)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Else, tracker probably returned non-compact version
+		peerList, err := dict.GetList("peers")
+		if err != nil {
+			return nil, err
+		}
+		err = resp.AddPeersFromList(peerList)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Optional fields
@@ -183,22 +148,69 @@ func newResponse(dict bencode.Dict) (*Resp, error) {
 	return &resp, nil
 }
 
+// AddPeersFromCompactString
+// Reads through a string containing 6 byte peer data defined in BEP_0023
+// https://www.bittorrent.org/beps/bep_0023.html
+func (r *Resp) AddPeersFromCompactString(peerString string) error {
+	if len(peerString)%6 != 0 {
+		return &Error{msg: fmt.Sprintf("compact peer list must be divisible by 6, length = [%v]", len(peerString))}
+	}
+	nPeers := uint(len(peerString) / 6)
+
+	for i := uint(0); i < nPeers; i++ {
+		start := i * 6
+		ip := net.IPv4(peerString[start], peerString[start+1], peerString[start+2], peerString[start+3])
+		port := binary.BigEndian.Uint16([]byte(peerString[start+4 : start+6]))
+		r.peerList = append(r.peerList, peer.NewPeer("", ip, port))
+	}
+
+	return nil
+}
+
+// AddPeersFromList
+// Reads through list of dictionaries defined in BEP_0003
+// https://www.bittorrent.org/beps/bep_0003.html#trackers
+func (r *Resp) AddPeersFromList(peerList bencode.List) error {
+	for _, p := range peerList {
+		peerDict, ok := p.(bencode.Dict)
+		if !ok {
+			return &Error{
+				msg: fmt.Sprintf("invalid peer list\n[%v]", peerList),
+			}
+		}
+		ip, err := peerDict.GetString("ip")
+		if err != nil {
+			return err
+		}
+		port, err := peerDict.GetUint("port")
+		if err != nil {
+			return err
+		}
+		id, err := peerDict.GetString("peer id")
+		if err != nil {
+			return err
+		}
+		r.peerList = append(r.peerList, peer.NewPeer(id, net.ParseIP(ip), uint16(port)))
+	}
+	return nil
+}
+
 func (r *Resp) Pretty() string {
 	strb := strings.Builder{}
-	strb.WriteString("Resp: {\n")
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Seeders", r.seeders))
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Leechers", r.leechers))
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Interval", r.interval))
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Warning", r.warning))
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Tracker ID", r.tid))
-	strb.WriteString(fmt.Sprintf("\t%12s: [%v]\n", "Min Interval", r.minInterval))
-	strb.WriteString(fmt.Sprintf("\tPeer List (%v):", len(r.peerList)))
+	strb.WriteString("Tracker Response:\n")
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Seeders", r.seeders))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Leechers", r.leechers))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Interval", r.interval))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Warning", r.warning))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Tracker ID", r.tid))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Min Interval", r.minInterval))
+	strb.WriteString(fmt.Sprintf("Peer List (%v):", len(r.peerList)))
 	for i, v := range r.peerList {
 		if i%5 == 0 {
-			strb.WriteString("\n\t\t")
+			strb.WriteString("\n\t")
 		}
 		strb.WriteString(fmt.Sprintf("(%v:%v) ", v.Ip(), v.Port()))
 	}
-	strb.WriteString("\n}\n")
+	strb.WriteString("\n")
 	return strb.String()
 }

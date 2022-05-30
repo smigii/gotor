@@ -2,10 +2,6 @@ package bencode
 
 import "fmt"
 
-//type BenType interface {
-//	int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64 | string | Dict | List
-//}
-
 type Dict map[string]interface{}
 type List []interface{}
 
@@ -39,30 +35,6 @@ func (d Dict) get(key string) (interface{}, error) {
 		}
 	}
 }
-
-// Not really a fan of this, even though it cuts down on
-// code duplication, passing the dict as a parameter feels gross
-//func Get[T BenType](dict Dict, key string) (T, error) {
-//	var zero T
-//
-//	if val, ok := dict[key]; !ok {
-//		return zero, &DictMissingKeyError{
-//			key:  key,
-//			dict: dict,
-//		}
-//	} else {
-//		if ret, ok := val.(T); ok {
-//			return ret, nil
-//		} else {
-//			return zero, &DictBadTypeError{
-//				key:   key,
-//				tWant: fmt.Sprintf("%T", zero),
-//				tHave: fmt.Sprintf("%T", val),
-//				dict:  dict,
-//			}
-//		}
-//	}
-//}
 
 func (d Dict) GetString(key string) (string, error) {
 	if val, e := d.get(key); e != nil {

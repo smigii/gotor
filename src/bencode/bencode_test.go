@@ -2,38 +2,48 @@ package bencode
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"testing"
 )
 
 func TestBencode(t *testing.T) {
 
-	fdata, err := os.ReadFile("../../test_media/ubuntu-20.04.4-desktop-amd64.iso.torrent")
+	tests := []string{
+		"../../test_media/multifile.torrent",
+		"../../test_media/medfile.torrent",
+		"../../test_media/bigfile.torrent",
+	}
+
+	for _, f := range tests {
+		err := testTorrent(f)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+}
+
+func testTorrent(path string) error {
+
+	fdata, err := os.ReadFile(path)
 	if err != nil {
-		t.Error(err)
+		return err
 	}
 
 	d, err := Decode(fdata)
 	if err != nil {
-		t.Error(err)
-	}
-
-	dict, ok := d.(Dict)
-	if !ok {
-		t.Error("Error converting to dict")
-	}
-
-	if dict["announce"] != "https://torrent.ubuntu.com/announce" {
-		t.Error("Bad 'announce' value")
+		return err
 	}
 
 	e, err := Encode(d)
 	if err != nil {
-		t.Error(err)
+		return err
 	}
 
 	if !bytes.Equal(fdata, e) {
-		t.Error("encode(decode(fdata)) != fdata")
+		return errors.New("encode(decode(fdata)) != fdata")
 	}
 
+	return nil
 }
