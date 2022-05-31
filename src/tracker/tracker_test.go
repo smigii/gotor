@@ -44,7 +44,6 @@ func TestNewResponseCompact(t *testing.T) {
 	strbuilder.WriteByte('e')
 
 	raw := "d8:completei5e10:downloadedi55e10:incompletei2e8:intervali1748e12:min intervali874e5:peers" + strbuilder.String()
-	fmt.Println(raw)
 
 	ben, err := bencode.Decode([]byte(raw))
 	if err != nil {
