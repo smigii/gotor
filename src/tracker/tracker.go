@@ -6,6 +6,7 @@ import (
 	"gotor/bencode"
 	"gotor/peer"
 	"gotor/torrent"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -80,6 +81,33 @@ func NewRequest(tor *torrent.Torrent, port uint16, peerId string) *http.Request 
 	query.Add("compact", "1") // For compact peer list (BEP_0023)
 	req.URL.RawQuery = query.Encode()
 	return req
+}
+
+func Do(req *http.Request) (*Resp, error) {
+	client := http.Client{}
+	resp, err := client.Do(req)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	ben, err := bencode.Decode(body)
+	if err != nil {
+		return nil, err
+	}
+
+	dict, ok := ben.(bencode.Dict)
+	if !ok {
+		return nil, fmt.Errorf("response not a bencoded dictionary\n%v", body)
+	}
+
+	tresp, err := NewResponse(dict)
+	if err != nil {
+		return nil, err
+	} else {
+		return tresp, nil
+	}
 }
 
 func NewResponse(dict bencode.Dict) (*Resp, error) {
@@ -193,7 +221,7 @@ func (r *Resp) AddPeersFromList(peerList bencode.List) error {
 	return nil
 }
 
-func (r *Resp) Pretty() string {
+func (r *Resp) String() string {
 	strb := strings.Builder{}
 	strb.WriteString("Tracker Response:\n")
 	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Seeders", r.seeders))

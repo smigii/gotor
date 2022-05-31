@@ -25,7 +25,7 @@ func TestSwarm(t *testing.T) {
 	fmt.Println(tor.Infohash())
 	fmt.Println(string(hs.Id()))
 
-	c, err := net.Dial("tcp", "localhost:9606")
+	c, err := net.Dial("tcp", "50.71.192.245:9606")
 	if err != nil {
 		panic(err)
 	}
@@ -55,4 +55,5 @@ func TestSwarm(t *testing.T) {
 
 	fmt.Printf("Read %v bytes\n", n)
 	fmt.Println(string(buf))
+
 }

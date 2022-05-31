@@ -25,7 +25,7 @@ func main() {
 	}
 
 	fmt.Println("Torrent Info")
-	fmt.Println(tor.QuickStats())
+	fmt.Println(tor.String())
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -51,7 +51,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	fmt.Println("\n", resp.Pretty())
+	fmt.Println("\n", resp.String())
 
 	fmt.Println("DONE")
 

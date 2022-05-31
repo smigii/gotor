@@ -10,7 +10,7 @@ type Peer struct {
 	id           string
 	ip           net.IP
 	port         uint16
-	conn         net.Conn
+	Conn         net.Conn
 	chokingUs    bool // Peer is choking us
 	weChoking    bool // We are choking peer
 	interestedUs bool // Peer is interested in us

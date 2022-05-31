@@ -227,7 +227,7 @@ func NewTorrent(path string) (*Torrent, error) {
 // ============================================================================
 // MISC =======================================================================
 
-func (tor *Torrent) QuickStats() string {
+func (tor *Torrent) String() string {
 	builder := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
 	builder.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.name))
