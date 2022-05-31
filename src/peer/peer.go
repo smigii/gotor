@@ -1,11 +1,16 @@
 package peer
 
-import "net"
+import (
+	"fmt"
+	"net"
+	"strings"
+)
 
 type Peer struct {
 	id           string
 	ip           net.IP
 	port         uint16
+	conn         net.Conn
 	chokingUs    bool // Peer is choking us
 	weChoking    bool // We are choking peer
 	interestedUs bool // Peer is interested in us
@@ -35,6 +40,14 @@ func (p Peer) Ip() net.IP {
 
 func (p Peer) Port() uint16 {
 	return p.port
+}
+
+func (p *Peer) Addr() string {
+	strb := strings.Builder{}
+	strb.WriteString(p.ip.String())
+	strb.WriteByte(':')
+	strb.WriteString(fmt.Sprintf("%v", p.Port()))
+	return strb.String()
 }
 
 func (p *Peer) ChokingUs() bool {

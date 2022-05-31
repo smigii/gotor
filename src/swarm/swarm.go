@@ -1,10 +1,8 @@
 package swarm
 
 import (
-	"fmt"
-	"gotor/peer"
-	"net"
-	"os"
+	"gotor/torrent"
+	"gotor/tracker"
 )
 
 const (
@@ -12,65 +10,18 @@ const (
 	Port = "60666"
 )
 
-var conns []net.Conn
-
-func Swarm() {
-	conns = make([]net.Conn, 0, 16)
-
-	// Listen for incoming connections.
-	l, err := net.Listen("tcp", Host+":"+Port)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
-	}
-
-	// Close the listener when the application closes.
-	defer func(l net.Listener) {
-		err := l.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(l)
-
-	fmt.Println("Listening on " + Host + ":" + Port)
-	for {
-		// Listen for an incoming connection.
-		conn, err := l.Accept()
-		conns = append(conns, conn)
-		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
-		}
-		// Handle connections in a new goroutine.
-		go handleRequest(conn)
-	}
+type Swarm struct {
+	torrent *torrent.Torrent
+	tracker *tracker.Resp
 }
 
-func bootstrap(peer peer.Peer) {
-	//conn, err := net.Dial("tcp")
-}
-
-// Handles incoming requests.
-func handleRequest(conn net.Conn) {
-	// Make a buffer to hold incoming data.
-	buf := make([]byte, 1024)
-
-	// Read the incoming connection into the buffer.
-	for {
-		nRead, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println("Error reading:", err.Error())
-		}
-
-		for _, c := range conns {
-			if c.RemoteAddr() == conn.RemoteAddr() {
-				continue
-			}
-			c.Write(buf[:nRead])
-		}
-
-	}
-
-	// Close the connection when you're done with it.
-	conn.Close()
-}
+//func bootstrap(peer peer.Peer) error {
+//var err error
+//peer.conn, err = net.Dial("tcp", peer.Addr())
+//
+//if err != nil {
+//	return err
+//}
+//
+//hs := MakeHandshake()
+//}

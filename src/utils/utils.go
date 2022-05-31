@@ -2,10 +2,46 @@ package utils
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
 	"time"
 )
 
-var GotorPeerString string = "-GT0000-"
+const GotorPeerString string = "-GT0000-"
+
+func NewPeerId() string {
+	return GotorPeerString + randStringBytesMaskImprSrcSB(12)
+}
+
+// Some random bullshit I got from stackoverflow
+// I have absolutely no idea what this is doing, but it seems to work
+// https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
+func randStringBytesMaskImprSrcSB(n int) string {
+	var src = rand.NewSource(time.Now().UnixNano())
+	const (
+		letterIdxBits = 6                    // 6 bits to represent a letter index
+		letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+		letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+	)
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	sb := strings.Builder{}
+	sb.Grow(n)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			sb.WriteByte(letterBytes[idx])
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return sb.String()
+}
 
 // Bytes4Humans Turns a number of bytes into human-readable number and units.
 // Returns the converted number and string representing units

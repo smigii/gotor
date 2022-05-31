@@ -6,7 +6,6 @@ import (
 	"gotor/bencode"
 	"gotor/peer"
 	"gotor/torrent"
-	"gotor/utils"
 	"net"
 	"net/http"
 	"net/url"
@@ -69,11 +68,11 @@ func (r Resp) Peers() []*peer.Peer {
 // ============================================================================
 // FUNK =======================================================================
 
-func NewRequest(tor *torrent.Torrent, port uint16) *http.Request {
+func NewRequest(tor *torrent.Torrent, port uint16, peerId string) *http.Request {
 	req, _ := http.NewRequest("GET", tor.Announce(), nil)
 	query := req.URL.Query()
 	query.Add("info_hash", tor.Infohash())
-	query.Add("peer_id", url.QueryEscape(utils.GotorPeerString+"has93hlsaf83"))
+	query.Add("peer_id", url.QueryEscape(peerId))
 	query.Add("port", fmt.Sprintf("%v", port))
 	query.Add("uploaded", fmt.Sprintf("%v", tor.Uploaded()))
 	query.Add("downloaded", fmt.Sprintf("%v", tor.Dnloaded()))
