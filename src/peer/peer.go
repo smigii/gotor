@@ -10,6 +10,7 @@ type Peer struct {
 	weChoking    bool // We are choking peer
 	interestedUs bool // Peer is interested in us
 	weInterested bool // We are interested in peer
+	bitfield     []byte
 }
 
 func NewPeer(id string, ip net.IP, port uint16) *Peer {

@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
+	Host = "localhost"
+	Port = "60666"
 )
 
 var conns []net.Conn
@@ -19,7 +18,7 @@ func Swarm() {
 	conns = make([]net.Conn, 0, 16)
 
 	// Listen for incoming connections.
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
+	l, err := net.Listen("tcp", Host+":"+Port)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
@@ -33,7 +32,7 @@ func Swarm() {
 		}
 	}(l)
 
-	fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
+	fmt.Println("Listening on " + Host + ":" + Port)
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
