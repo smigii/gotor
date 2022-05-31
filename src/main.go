@@ -30,7 +30,7 @@ func main() {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	var resp *tracker.Resp
+	var resp *tracker.Response
 	ch := make(chan bool)
 	req := tracker.NewRequest(tor, 60666, utils.NewPeerId())
 	fmt.Println("Full URL: ", req.URL)
@@ -57,7 +57,7 @@ func main() {
 
 }
 
-func GetTrackerResponse(req *http.Request) (*tracker.Resp, error) {
+func GetTrackerResponse(req *http.Request) (*tracker.Response, error) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 

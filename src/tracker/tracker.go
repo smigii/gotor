@@ -1,13 +1,10 @@
 package tracker
 
 import (
-	"encoding/binary"
 	"fmt"
 	"gotor/bencode"
-	"gotor/peer"
 	"gotor/torrent"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,45 +22,45 @@ func (e *Error) Error() string {
 // ============================================================================
 // STRUCT =====================================================================
 
-type Resp struct {
+type State struct {
 	interval    uint64
 	minInterval uint64
 	warning     string
 	tid         string
 	seeders     uint64
 	leechers    uint64
-	peerList    []*peer.Peer
+}
+
+type Response struct {
+	State *State
+	Peers PeerList
 }
 
 // ============================================================================
 // GETTERS ====================================================================
 
-func (r Resp) Interval() uint64 {
-	return r.interval
+func (s State) Interval() uint64 {
+	return s.interval
 }
 
-func (r Resp) MinInterval() uint64 {
-	return r.minInterval
+func (s State) MinInterval() uint64 {
+	return s.minInterval
 }
 
-func (r Resp) Warning() string {
-	return r.warning
+func (s State) Warning() string {
+	return s.warning
 }
 
-func (r Resp) Tid() string {
-	return r.tid
+func (s State) Tid() string {
+	return s.tid
 }
 
-func (r Resp) Seeders() uint64 {
-	return r.seeders
+func (s State) Seeders() uint64 {
+	return s.seeders
 }
 
-func (r Resp) Leechers() uint64 {
-	return r.leechers
-}
-
-func (r Resp) Peers() []*peer.Peer {
-	return r.peerList
+func (s State) Leechers() uint64 {
+	return s.leechers
 }
 
 // ============================================================================
@@ -83,7 +80,7 @@ func NewRequest(tor *torrent.Torrent, port uint16, peerId string) *http.Request 
 	return req
 }
 
-func Do(req *http.Request) (*Resp, error) {
+func Do(req *http.Request) (*Response, error) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 
@@ -110,8 +107,8 @@ func Do(req *http.Request) (*Resp, error) {
 	}
 }
 
-func NewResponse(dict bencode.Dict) (*Resp, error) {
-	resp := Resp{}
+func NewResponse(dict bencode.Dict) (*Response, error) {
+	state := State{}
 
 	// Required fields
 	fail, err := dict.GetString("failure reason")
@@ -123,38 +120,38 @@ func NewResponse(dict bencode.Dict) (*Resp, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp.interval = inter
+	state.interval = inter
 
 	seeds, err := dict.GetUint("complete")
 	if err != nil {
 		return nil, err
 	}
-	resp.seeders = seeds
+	state.seeders = seeds
 
 	leeches, err := dict.GetUint("incomplete")
 	if err != nil {
 		return nil, err
 	}
-	resp.leechers = leeches
+	state.leechers = leeches
 
 	// Peer List
 	// 50 peers are returned by default
-	resp.peerList = make([]*peer.Peer, 0, 50)
+	peerList := make(PeerList, 0, 50)
 
 	// Most trackers should be returning compact peer list, try that first
 	compactPeerString, err := dict.GetString("peers")
 	if err == nil {
-		err = resp.AddPeersFromCompactString(compactPeerString)
+		err = peerList.AddPeersFromString(compactPeerString)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		// Else, tracker probably returned non-compact version
-		peerList, err := dict.GetList("peers")
+		list, err := dict.GetList("peers")
 		if err != nil {
 			return nil, err
 		}
-		err = resp.AddPeersFromList(peerList)
+		err = peerList.AddPeersFromList(list)
 		if err != nil {
 			return nil, err
 		}
@@ -163,80 +160,46 @@ func NewResponse(dict bencode.Dict) (*Resp, error) {
 	// Optional fields
 	warn, err := dict.GetString("warning message")
 	if err == nil {
-		resp.warning = warn
+		state.warning = warn
 	}
 
 	minInter, err := dict.GetUint("min interval")
 	if err == nil {
-		resp.minInterval = minInter
+		state.minInterval = minInter
 	}
 
+	resp := Response{
+		State: &state,
+		Peers: peerList,
+	}
 	return &resp, nil
 }
 
-// AddPeersFromCompactString
-// Reads through a string containing 6 byte peer data defined in BEP_0023
-// https://www.bittorrent.org/beps/bep_0023.html
-func (r *Resp) AddPeersFromCompactString(peerString string) error {
-	if len(peerString)%6 != 0 {
-		return &Error{msg: fmt.Sprintf("compact peer list must be divisible by 6, length = [%v]", len(peerString))}
-	}
-	nPeers := uint(len(peerString) / 6)
+// ============================================================================
+// STRING =====================================================================
 
-	for i := uint(0); i < nPeers; i++ {
-		start := i * 6
-		ip := net.IPv4(peerString[start], peerString[start+1], peerString[start+2], peerString[start+3])
-		port := binary.BigEndian.Uint16([]byte(peerString[start+4 : start+6]))
-		r.peerList = append(r.peerList, peer.NewPeer("", ip, port))
-	}
-
-	return nil
-}
-
-// AddPeersFromList
-// Reads through list of dictionaries defined in BEP_0003
-// https://www.bittorrent.org/beps/bep_0003.html#trackers
-func (r *Resp) AddPeersFromList(peerList bencode.List) error {
-	for _, p := range peerList {
-		peerDict, ok := p.(bencode.Dict)
-		if !ok {
-			return &Error{
-				msg: fmt.Sprintf("invalid peer list\n[%v]", peerList),
-			}
-		}
-		ip, err := peerDict.GetString("ip")
-		if err != nil {
-			return err
-		}
-		port, err := peerDict.GetUint("port")
-		if err != nil {
-			return err
-		}
-		id, err := peerDict.GetString("peer id")
-		if err != nil {
-			return err
-		}
-		r.peerList = append(r.peerList, peer.NewPeer(id, net.ParseIP(ip), uint16(port)))
-	}
-	return nil
-}
-
-func (r *Resp) String() string {
+func (s *State) String() string {
 	strb := strings.Builder{}
-	strb.WriteString("Tracker Response:\n")
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Seeders", r.seeders))
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Leechers", r.leechers))
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Interval", r.interval))
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Warning", r.warning))
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Tracker ID", r.tid))
-	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Min Interval", r.minInterval))
-	strb.WriteString(fmt.Sprintf("Peer List (%v):", len(r.peerList)))
-	for i, v := range r.peerList {
+	strb.WriteString("Tracker State:\n")
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Seeders", s.seeders))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Leechers", s.leechers))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Interval", s.interval))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Warning", s.warning))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Tracker ID", s.tid))
+	strb.WriteString(fmt.Sprintf("%12s: [%v]\n", "Min Interval", s.minInterval))
+	return strb.String()
+}
+
+// Temporary
+func (r *Response) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(r.State.String())
+	strb.WriteString(fmt.Sprintf("Peer List (%v):", len(r.Peers)))
+	for i, v := range r.Peers {
 		if i%5 == 0 {
 			strb.WriteString("\n\t")
 		}
 		strb.WriteString(fmt.Sprintf("(%v:%v) ", v.Ip(), v.Port()))
 	}
-	strb.WriteString("\n")
 	return strb.String()
 }

@@ -11,7 +11,7 @@ import (
 
 type Swarm struct {
 	Tor     *torrent.Torrent
-	Tracker *tracker.Resp
+	Tracker *tracker.Response
 	//peers   []*peer.Peer
 	Id string
 }
@@ -47,7 +47,7 @@ func NewSwarm(path string, port uint16) (*Swarm, error) {
 func (s *Swarm) Go() error {
 
 	// Start peer Goroutines
-	for _, p := range s.Tracker.Peers() {
+	for _, p := range s.Tracker.Peers {
 		go s.HandlePeer(p)
 	}
 

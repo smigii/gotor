@@ -61,12 +61,14 @@ func TestNewResponseCompact(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(resp.peerList) != len(ips) {
-		t.Errorf("peer list has length [%v], expected [%v]", len(resp.peerList), len(ips))
+	peers := resp.Peers
+
+	if len(peers) != len(ips) {
+		t.Errorf("peer list has length [%v], expected [%v]", len(peers), len(ips))
 	}
 
 	// Loop through peers and verify IPs and ports
-	for i, p := range resp.peerList {
+	for i, p := range peers {
 		if !p.Ip().Equal(ips[i]) {
 			t.Errorf("bad IP (%v), expected [%v], got [%v]", i, ips[i], p.Ip())
 		}
