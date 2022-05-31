@@ -1,10 +1,13 @@
 package tracker
 
 import (
+	"encoding/binary"
 	"fmt"
 	"gotor/bencode"
+	"gotor/peer"
 	"gotor/torrent"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -33,7 +36,7 @@ type State struct {
 
 type Response struct {
 	State *State
-	Peers PeerList
+	Peers peer.List
 }
 
 // ============================================================================
@@ -109,8 +112,12 @@ func Do(req *http.Request) (*Response, error) {
 
 func NewResponse(dict bencode.Dict) (*Response, error) {
 	state := State{}
+	resp := Response{
+		State: &state,
+		Peers: nil,
+	}
 
-	// Required fields
+	// Required fields --------------------------------------------------------
 	fail, err := dict.GetString("failure reason")
 	if err == nil {
 		return nil, &Error{msg: fail}
@@ -134,30 +141,29 @@ func NewResponse(dict bencode.Dict) (*Response, error) {
 	}
 	state.leechers = leeches
 
-	// Peer List
-	// 50 peers are returned by default
-	peerList := make(PeerList, 0, 50)
+	// Get the peer list ------------------------------------------------------
+	// Interface which will be used to extract peers (either a string or list)
+	var src peer.ListSource
 
 	// Most trackers should be returning compact peer list, try that first
 	compactPeerString, err := dict.GetString("peers")
 	if err == nil {
-		err = peerList.AddPeersFromString(compactPeerString)
-		if err != nil {
-			return nil, err
-		}
+		src = stringSource(compactPeerString)
 	} else {
 		// Else, tracker probably returned non-compact version
 		list, err := dict.GetList("peers")
 		if err != nil {
+			// Tracker returned some hot trash
 			return nil, err
 		}
-		err = peerList.AddPeersFromList(list)
-		if err != nil {
-			return nil, err
-		}
+		src = listSource(list)
+	}
+	resp.Peers, err = src.GetPeers()
+	if err != nil {
+		return nil, err
 	}
 
-	// Optional fields
+	// Optional fields --------------------------------------------------------
 	warn, err := dict.GetString("warning message")
 	if err == nil {
 		state.warning = warn
@@ -168,11 +174,61 @@ func NewResponse(dict bencode.Dict) (*Response, error) {
 		state.minInterval = minInter
 	}
 
-	resp := Response{
-		State: &state,
-		Peers: peerList,
-	}
 	return &resp, nil
+}
+
+// ============================================================================
+// IMPLEMENT INTERFACE ========================================================
+
+// Define 2 new ways to add peers to a peer list using the interface from
+// peerlist.go; using strings and using bencoded lists
+
+type stringSource string
+
+func (s stringSource) GetPeers() (peer.List, error) {
+	if len(s)%6 != 0 {
+		return nil, &Error{msg: fmt.Sprintf("compact peer list must be divisible by 6, length = [%v]", len(s))}
+	}
+
+	nPeers := uint(len(s) / 6)
+	peerList := make(peer.List, 0, nPeers)
+
+	for i := uint(0); i < nPeers; i++ {
+		start := i * 6
+		ip := net.IPv4(s[start], s[start+1], s[start+2], s[start+3])
+		port := binary.BigEndian.Uint16([]byte(s[start+4 : start+6]))
+		peerList = append(peerList, peer.NewPeer("", ip, port))
+	}
+
+	return peerList, nil
+}
+
+type listSource bencode.List
+
+func (l listSource) GetPeers() (peer.List, error) {
+	peerList := make(peer.List, 0, len(l))
+	for _, v := range l {
+		peerDict, ok := v.(bencode.Dict)
+		if !ok {
+			return nil, &Error{
+				msg: fmt.Sprintf("invalid peer list\n[%v]", peerList),
+			}
+		}
+		ip, err := peerDict.GetString("ip")
+		if err != nil {
+			return nil, err
+		}
+		port, err := peerDict.GetUint("port")
+		if err != nil {
+			return nil, err
+		}
+		id, err := peerDict.GetString("peer id")
+		if err != nil {
+			return nil, err
+		}
+		peerList = append(peerList, peer.NewPeer(id, net.ParseIP(ip), uint16(port)))
+	}
+	return peerList, nil
 }
 
 // ============================================================================
