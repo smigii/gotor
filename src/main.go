@@ -32,7 +32,7 @@ func main() {
 
 	var resp *tracker.Resp
 	ch := make(chan bool)
-	req := tracker.Request(tor, 60666)
+	req := tracker.NewRequest(tor, 60666)
 	fmt.Println("Full URL: ", req.URL)
 
 	go func() {

@@ -69,8 +69,7 @@ func (r Resp) Peers() []*peer.Peer {
 // ============================================================================
 // FUNK =======================================================================
 
-func Request(tor *torrent.Torrent, port uint16) *http.Request {
-	//client := http.Client{}
+func NewRequest(tor *torrent.Torrent, port uint16) *http.Request {
 	req, _ := http.NewRequest("GET", tor.Announce(), nil)
 	query := req.URL.Query()
 	query.Add("info_hash", tor.Infohash())

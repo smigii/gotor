@@ -9,17 +9,21 @@ import (
 
 func TestBencode(t *testing.T) {
 
-	tests := []string{
-		"../../test_media/multifile.torrent",
-		"../../test_media/medfile.torrent",
-		"../../test_media/bigfile.torrent",
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"multi file", "../../test_media/multifile.torrent"},
+		{"medium file", "../../test_media/medfile.torrent"},
+		{"big file", "../../test_media/bigfile.torrent"},
 	}
-
-	for _, f := range tests {
-		err := testTorrent(f)
-		if err != nil {
-			t.Error(err)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := testTorrent(tt.path)
+			if e != nil {
+				t.Error(e)
+			}
+		})
 	}
 
 }
