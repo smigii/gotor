@@ -12,8 +12,8 @@ import (
 type Swarm struct {
 	Tor     *torrent.Torrent
 	Tracker *tracker.Response
-	//peers   []*peer.Peer
-	Id string
+	Peers   peer.List
+	Id      string
 }
 
 func NewSwarm(path string, port uint16) (*Swarm, error) {
