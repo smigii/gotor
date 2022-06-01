@@ -8,7 +8,7 @@ func TestSwarm(t *testing.T) {
 
 	//peerId := utils.NewPeerId()
 	//
-	//tor, e := torrent.NewTorrent("../../test_media/medfile.torrent")
+	//tor, e := torrent.NewTorrent("../../test/medfile.torrent")
 	//if e != nil {
 	//	panic(e)
 	//}

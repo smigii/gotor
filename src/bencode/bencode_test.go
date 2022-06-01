@@ -13,9 +13,9 @@ func TestBencode(t *testing.T) {
 		name string
 		path string
 	}{
-		{"multi file", "../../test_media/multifile.torrent"},
-		{"medium file", "../../test_media/medfile.torrent"},
-		{"big file", "../../test_media/bigfile.torrent"},
+		{"multi file", "../../test/multifile.torrent"},
+		{"medium file", "../../test/medfile.torrent"},
+		{"big file", "../../test/bigfile.torrent"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

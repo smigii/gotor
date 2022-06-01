@@ -19,17 +19,17 @@ func TestTorrent(t *testing.T) {
 	}{
 		{
 			name:     "multifile",
-			path:     "../../test_media/multifile.torrent",
+			path:     "../../test/multifile.torrent",
 			infohash: "b253474bd8536994e4ea9e0786a4e0ea528e2530",
 		},
 		{
 			name:     "medfile",
-			path:     "../../test_media/medfile.torrent",
+			path:     "../../test/medfile.torrent",
 			infohash: "a554b7cc4616ae2fce43fabe9a7fe931aff5d85c",
 		},
 		{
 			name:     "bigfile",
-			path:     "../../test_media/bigfile.torrent",
+			path:     "../../test/bigfile.torrent",
 			infohash: "658a9fbffae3c07e2320b7c4b144da978296dcc7",
 		},
 	}
