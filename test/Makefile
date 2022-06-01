@@ -1,21 +1,24 @@
-FILES   = bigfile medfile multifile
-TRACKER = http://opentracker.i2p.rocks:6969/announce
-TOR_CMD = transmission-create -c "Gotor testing file(s)" -t $(TRACKER)
+FILES    = bigfile medfile multifile
+TORS     = $(patsubst %, %.torrent, $(FILES))
+ARCHIVES = $(patsubst %, %.tar.gz, $(FILES))
+TRACKER  = http://opentracker.i2p.rocks:6969/announce
+MKTOR    = transmission-create -c "Gotor testing file(s)" -t $(TRACKER)
+COMPRESS = tar -czvf
 
-all: bigfile.torrent medfile.torrent multifile.torrent
+all: torrents archives
 
-bigfile.torrent: bigfile
-	tar cfz bigfile.tgz bigfile
-	$(TOR_CMD) bigfile
+torrents: $(TORS)
 
-medfile.torrent: medfile
-	tar cfz medfile.tgz medfile
-	$(TOR_CMD) medfile
+archives: $(ARCHIVES)
 
-multifile.torrent: multifile
-	tar cfz multifile.tgz multifile
-	$(TOR_CMD) multifile
+# Create torrent
+%.torrent: %
+	$(MKTOR) $<
+
+# Compress
+%.tar.gz: %
+	$(COMPRESS) $<.tar.gz $<
 
 .PHONY:
 clean:
-	rm *.torrent
+	rm $(TORS) $(ARCHIVES)
