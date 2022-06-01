@@ -55,7 +55,7 @@ func TestNewResponseCompact(t *testing.T) {
 		t.Error("failed converting bencode interface to dict")
 	}
 
-	resp, err := NewResponse(dict)
+	resp, err := newResponse(dict)
 	if err != nil {
 		t.Error(err)
 	}

@@ -1,85 +1,37 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"gotor/bencode"
-	"gotor/torrent"
-	"gotor/tracker"
+	"gotor/swarm"
 	"gotor/utils"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"os"
-	"sync"
 )
 
 func main() {
 
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: gotor path/to/file.torrent")
+	var in = flag.String("i", "", "Path to .torrent file")
+	var out = flag.String("o", ".", "Output path")
+	var port = flag.Uint("p", 60666, "Port to listen on")
+
+	flag.Parse()
+
+	opts := utils.GetOpts()
+	opts.SetInput(*in)
+	opts.SetOutput(*out)
+	opts.SetLport(uint16(*port))
+	e := opts.Validate()
+	if e != nil {
+		log.Fatal(e)
 	}
 
-	tor, err := torrent.NewTorrent(os.Args[1])
-	if err != nil {
-		log.Fatalln(err)
+	s, e := swarm.NewSwarm(opts)
+	if e != nil {
+		log.Fatal(e)
 	}
 
-	fmt.Println("Torrent Info")
-	fmt.Println(tor.String())
+	fmt.Println("\n", s.String())
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	fmt.Println("\n\nDONE")
 
-	var resp *tracker.Response
-	ch := make(chan bool)
-	req := tracker.NewRequest(tor, 60666, utils.NewPeerId())
-	fmt.Println("Full URL: ", req.URL)
-
-	go func() {
-		defer wg.Done()
-		go utils.Spinner(ch, "Downloading peer list from tracker")
-	}()
-	go func() {
-		defer wg.Done()
-		//time.Sleep(5 * time.Second)
-		resp, err = GetTrackerResponse(req)
-		ch <- true
-	}()
-	wg.Wait()
-
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	fmt.Println("\n", resp.String())
-
-	fmt.Println("DONE")
-
-}
-
-func GetTrackerResponse(req *http.Request) (*tracker.Response, error) {
-	client := http.Client{}
-	resp, err := client.Do(req)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	ben, err := bencode.Decode(body)
-	if err != nil {
-		return nil, err
-	}
-
-	dict, ok := ben.(bencode.Dict)
-	if !ok {
-		return nil, fmt.Errorf("response not a bencoded dictionary\n%v", body)
-	}
-
-	tresp, err := tracker.NewResponse(dict)
-	if err != nil {
-		return nil, err
-	} else {
-		return tresp, nil
-	}
 }

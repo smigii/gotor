@@ -31,9 +31,6 @@ type Torrent struct {
 	numPieces uint64
 	length    uint64
 	files     []FileEntry
-
-	uploaded uint64
-	dnloaded uint64
 }
 
 type FileEntry struct {
@@ -81,30 +78,6 @@ func (tor *Torrent) Piece(idx uint64) (string, error) {
 
 	offset := idx * 20
 	return tor.pieces[offset:20], nil
-}
-
-func (tor *Torrent) Uploaded() uint64 {
-	return tor.uploaded
-}
-
-func (tor *Torrent) SetUploaded(uploaded uint64) {
-	tor.uploaded = uploaded
-}
-
-func (tor *Torrent) IncUploaded(amnt uint64) {
-	tor.uploaded += amnt
-}
-
-func (tor *Torrent) Dnloaded() uint64 {
-	return tor.dnloaded
-}
-
-func (tor *Torrent) SetDnloaded(dnloaded uint64) {
-	tor.dnloaded = dnloaded
-}
-
-func (tor *Torrent) IncDownloaded(amnt uint64) {
-	tor.dnloaded += amnt
 }
 
 // ============================================================================
@@ -228,21 +201,25 @@ func NewTorrent(path string) (*Torrent, error) {
 // MISC =======================================================================
 
 func (tor *Torrent) String() string {
-	builder := strings.Builder{}
+	strb := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
-	builder.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.name))
-	builder.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
-	builder.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
+
+	strb.WriteString("Torrent Info:\n")
+	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.name))
+	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
+	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
+	plen, units := utils.Bytes4Humans(tor.pieceLen)
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", tor.numPieces, plen, units))
 	bsize, units := utils.Bytes4Humans(tor.length)
-	builder.WriteString(fmt.Sprintf("   Length: [%.02f %v]\n", bsize, units))
+	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
 	if tor.files != nil {
-		builder.WriteString("\nFiles:\n")
+		strb.WriteString("\nFiles:\n")
 		for _, p := range tor.files {
-			builder.WriteString(strings.Join(p.path, "/"))
-			builder.WriteByte('\n')
+			strb.WriteString(strings.Join(p.path, "/"))
+			strb.WriteByte('\n')
 		}
 	}
 
-	return builder.String()
+	return strb.String()
 }

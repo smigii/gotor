@@ -25,6 +25,7 @@ func (e *Error) Error() string {
 // ============================================================================
 // STRUCT =====================================================================
 
+// State returned by a tracker after a GET request
 type State struct {
 	interval    uint64
 	minInterval uint64
@@ -34,6 +35,9 @@ type State struct {
 	leechers    uint64
 }
 
+// Response is a wrapper for a tracker server response. I didn't want to access
+// the peer list through the State object later on, so instead it is returned
+// sepereately.
 type Response struct {
 	State *State
 	Peers peer.List
@@ -69,23 +73,36 @@ func (s State) Leechers() uint64 {
 // ============================================================================
 // FUNK =======================================================================
 
-func NewRequest(tor *torrent.Torrent, port uint16, peerId string) *http.Request {
+func Get(tor *torrent.Torrent, stats *Stats, port uint16, peerId string) (*Response, error) {
+	req := newRequest(tor, stats, port, peerId)
+	resp, e := do(req)
+	if e != nil {
+		return nil, e
+	}
+	return resp, nil
+}
+
+func newRequest(tor *torrent.Torrent, stats *Stats, port uint16, peerId string) *http.Request {
 	req, _ := http.NewRequest("GET", tor.Announce(), nil)
 	query := req.URL.Query()
 	query.Add("info_hash", tor.Infohash())
 	query.Add("peer_id", url.QueryEscape(peerId))
 	query.Add("port", fmt.Sprintf("%v", port))
-	query.Add("uploaded", fmt.Sprintf("%v", tor.Uploaded()))
-	query.Add("downloaded", fmt.Sprintf("%v", tor.Dnloaded()))
-	query.Add("left", fmt.Sprintf("%v", tor.Length()))
+	query.Add("uploaded", fmt.Sprintf("%v", stats.Uploaded()))
+	query.Add("downloaded", fmt.Sprintf("%v", stats.Dnloaded()))
+	query.Add("left", fmt.Sprintf("%v", stats.Left()))
 	query.Add("compact", "1") // For compact peer list (BEP_0023)
 	req.URL.RawQuery = query.Encode()
 	return req
 }
 
-func Do(req *http.Request) (*Response, error) {
+func do(req *http.Request) (*Response, error) {
 	client := http.Client{}
+
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -102,7 +119,7 @@ func Do(req *http.Request) (*Response, error) {
 		return nil, fmt.Errorf("response not a bencoded dictionary\n%v", body)
 	}
 
-	tresp, err := NewResponse(dict)
+	tresp, err := newResponse(dict)
 	if err != nil {
 		return nil, err
 	} else {
@@ -110,7 +127,7 @@ func Do(req *http.Request) (*Response, error) {
 	}
 }
 
-func NewResponse(dict bencode.Dict) (*Response, error) {
+func newResponse(dict bencode.Dict) (*Response, error) {
 	state := State{}
 	resp := Response{
 		State: &state,

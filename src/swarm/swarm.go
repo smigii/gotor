@@ -1,53 +1,64 @@
 package swarm
 
 import (
-	"fmt"
 	"gotor/peer"
 	"gotor/torrent"
 	"gotor/tracker"
 	"gotor/utils"
+	"log"
 	"net"
+	"strings"
 )
 
+// ============================================================================
+// STRUCTS ====================================================================
+
 type Swarm struct {
-	Tor     *torrent.Torrent
-	Tracker *tracker.Response
-	Peers   peer.List
-	Id      string
+	State *tracker.State
+	Stats *tracker.Stats
+	Peers peer.List
+	Tor   *torrent.Torrent
+	Id    string
+	Port  uint16
 }
 
-func NewSwarm(path string, port uint16) (*Swarm, error) {
-	swarm := Swarm{}
-	swarm.Id = utils.NewPeerId()
+// ============================================================================
+// FUNK =======================================================================
+
+func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	var err error
 
+	swarm := Swarm{}
+	swarm.Id = utils.NewPeerId()
+	swarm.Port = opts.Lport()
+
 	// Read torrent file
-	swarm.Tor, err = torrent.NewTorrent(path)
+	log.Printf("reading torrent file [%v]\n", opts.Input())
+	swarm.Tor, err = torrent.NewTorrent(opts.Input())
 	if err != nil {
 		return nil, err
 	}
 
-	// Printy printy
-	fmt.Println("Torrent Info")
-	fmt.Println(swarm.Tor.String())
+	// TODO: Check opts.output and see how much is really done
+	swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())
 
 	// Make first contact with tracker
-	treq := tracker.NewRequest(swarm.Tor, port, swarm.Id)
-	swarm.Tracker, err = tracker.Do(treq)
+	log.Printf("sending get to tracker [%v]\n", swarm.Tor.Announce())
+	resp, err := tracker.Get(swarm.Tor, swarm.Stats, swarm.Port, swarm.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	// Printy printy
-	fmt.Println("\n", swarm.Tracker.String())
+	swarm.State = resp.State
+	swarm.Peers = resp.Peers
 
 	return &swarm, nil
 }
 
-func (s *Swarm) Go() error {
+func (s *Swarm) Start() error {
 
 	// Start peer Goroutines
-	for _, p := range s.Tracker.Peers {
+	for _, p := range s.Peers {
 		go s.HandlePeer(p)
 	}
 
@@ -84,4 +95,14 @@ func (s *Swarm) Bootstrap(peer *peer.Peer) error {
 	}
 
 	return nil
+}
+
+func (s *Swarm) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(s.Tor.String())
+	strb.WriteByte('\n')
+	strb.WriteString(s.State.String())
+	strb.WriteByte('\n')
+	strb.WriteString(s.Peers.String())
+	return strb.String()
 }

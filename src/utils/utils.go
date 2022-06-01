@@ -14,7 +14,7 @@ func NewPeerId() string {
 }
 
 // Some random bullshit I got from stackoverflow
-// I have absolutely no idea what this is doing, but it seems to work
+// I have absolutely no idea how this works, but it seems to work
 // https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
 func randStringBytesMaskImprSrcSB(n int) string {
 	var src = rand.NewSource(time.Now().UnixNano())
@@ -47,7 +47,7 @@ func randStringBytesMaskImprSrcSB(n int) string {
 // Returns the converted number and string representing units
 func Bytes4Humans(nbytes uint64) (float64, string) {
 	asfloat := float64(nbytes)
-	const unit = 1000
+	const unit = 1024
 
 	if nbytes < unit {
 		return asfloat, "B"
@@ -58,7 +58,7 @@ func Bytes4Humans(nbytes uint64) (float64, string) {
 		div *= unit
 		exp++
 	}
-	return asfloat / float64(div), string("KMGTPE"[exp]) + "B"
+	return asfloat / float64(div), string("KMGTPE"[exp]) + "iB"
 }
 
 // Spinner A fun spinner thing, it's very fun
