@@ -1,37 +1,43 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"gotor/swarm"
+	"gotor/torrent"
 	"gotor/utils"
 	"log"
 )
 
 func main() {
 
-	var in = flag.String("i", "", "Path to .torrent file")
-	var out = flag.String("o", ".", "Output path")
-	var port = flag.Uint("p", 60666, "Port to listen on")
-
-	flag.Parse()
-
 	opts := utils.GetOpts()
-	opts.SetInput(*in)
-	opts.SetOutput(*out)
-	opts.SetLport(uint16(*port))
-	e := opts.Validate()
-	if e != nil {
-		log.Fatal(e)
+
+	switch opts.Cmd() {
+	case utils.StartSwarm:
+		CmdSwarm(opts)
+	case utils.TorInfo:
+		CmdTorInfo(opts)
+	default:
+		fmt.Printf("invalid command [%v]", opts.Cmd())
 	}
 
+	fmt.Println("\n\nDONE")
+
+}
+
+func CmdSwarm(opts *utils.Opts) {
 	s, e := swarm.NewSwarm(opts)
 	if e != nil {
 		log.Fatal(e)
 	}
 
 	fmt.Println("\n", s.String())
+}
 
-	fmt.Println("\n\nDONE")
-
+func CmdTorInfo(opts *utils.Opts) {
+	tor, e := torrent.NewTorrent(opts.Input())
+	if e != nil {
+		log.Fatal(e)
+	}
+	fmt.Println(tor.String())
 }

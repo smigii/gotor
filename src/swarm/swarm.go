@@ -30,7 +30,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 
 	swarm := Swarm{}
 	swarm.Id = utils.NewPeerId()
-	swarm.Port = opts.Lport()
+	swarm.Port = opts.Port()
 
 	// Read torrent file
 	log.Printf("reading torrent file [%v]\n", opts.Input())
