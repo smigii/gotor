@@ -18,8 +18,8 @@ const (
 	TypeKeepAlive = uint8(255) // Not in BEP_0003, however makes checking easy
 )
 
-// MaxMsgType is the max value for a message type given by spec (BEP_0003).
-const MaxMsgType = uint8(8)
+// PayloadStart is the starting index of the payload for all p2p messages
+const PayloadStart = uint32(5)
 
 // ============================================================================
 // TYPES ======================================================================
@@ -61,7 +61,7 @@ func (m *MsgBase) Encode() []byte {
 // fill the output byte slice (buf) when encoding. Use this instead of calling
 // MsgBase.Encode() to avoid allocating multiple byte slices.
 func (m *MsgBase) fillBase(buf []byte) {
-	_ = buf[5] // bounds check hint to compiler; see golang.org/issue/14808
+	_ = buf[4] // bounds check hint to compiler; see golang.org/issue/14808
 	binary.BigEndian.PutUint32(buf, m.length)
 	buf[4] = m.mtype
 }
@@ -118,15 +118,16 @@ func Decode(data []byte) (Message, error) {
 		return nil, fmt.Errorf("length specified as %v, payload length is %v", msglen, len(data))
 	}
 
-	// Exclude the length (byte 4)
-	payload := data[5 : 5+msglen-1]
+	// msglen includes length byte, -1 to exclude it
+	payload := data[PayloadStart : PayloadStart+msglen-1]
 
 	switch mtype {
 	case TypeHave:
 		msg, err := DecodeMsgHave(payload)
 		return msg, err
 	case TypeBitfield:
-		return NewMsgBitfield(payload), nil
+		msg, err := NewMsgBitfield(payload, msglen)
+		return msg, err
 	case TypeRequest:
 		msg, err := DecodeMsgRequest(payload)
 		return msg, err

@@ -1,5 +1,10 @@
 package p2p
 
+import "fmt"
+
+// MinLenBitfield is the minimum total length of the message (len+type+payload)
+const MinLenBitfield = uint32(5)
+
 // ============================================================================
 // TYPES ======================================================================
 
@@ -11,21 +16,40 @@ type MsgBitfield struct {
 // ============================================================================
 // CONSTRUCTORS ===============================================================
 
-func NewMsgBitfield(bitfield []byte) *MsgBitfield {
+// NewMsgBitfield does what you think. It explicitly asks for the length
+// of the bitfield, you should pass the length that was encoded in the
+// full message, to ensure that the entire bitfield is being stored.
+func NewMsgBitfield(bitfield []byte, msglen uint32) (*MsgBitfield, error) {
+	if uint32(len(bitfield)) != msglen-1 {
+		return nil, fmt.Errorf("message length (%v) does not match bitfield length (%v)", msglen, len(bitfield))
+	}
 	return &MsgBitfield{
 		MsgBase: MsgBase{
-			length: uint32(len(bitfield) + 1),
-			mtype:  TypeHave,
+			length: msglen,
+			mtype:  TypeBitfield,
 		},
 		bitfield: bitfield,
-	}
+	}, nil
+}
+
+// ============================================================================
+// GETTER =====================================================================
+
+func (bf *MsgBitfield) Bitfield() []byte {
+	return bf.bitfield
 }
 
 // ============================================================================
 // IMPL =======================================================================
 
-func (h *MsgBitfield) Encode() []byte {
-	pl := h.MsgBase.Encode()
-	pl = append(pl, h.bitfield...)
+func (bf *MsgBitfield) Encode() []byte {
+	// TODO: This may need optimization.
+	// 4GiB torrents seem to have around 1k pieces, meaning we are
+	// copying over 1000 elements every time we call Encode(). For
+	// larger torrents, this could cause some bad performance.
+	bflen := uint32(len(bf.bitfield))
+	pl := make([]byte, MinLenBitfield, MinLenBitfield+bflen)
+	bf.MsgBase.fillBase(pl)
+	pl = append(pl, bf.bitfield...)
 	return pl
 }

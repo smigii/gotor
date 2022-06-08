@@ -52,7 +52,7 @@ func (h *MsgHave) Index() uint32 {
 func (h *MsgHave) Encode() []byte {
 	pl := make([]byte, LenHave, LenHave)
 	h.MsgBase.fillBase(pl)
-	binary.BigEndian.PutUint32(pl[5:LenHave], h.index)
+	binary.BigEndian.PutUint32(pl[PayloadStart:LenHave], h.index)
 	return pl
 }
 
