@@ -1,4 +1,8 @@
-package protocol
+/* have.go ====================================================================
+Implements the have protocol message
+============================================================================ */
+
+package p2p
 
 import (
 	"encoding/binary"

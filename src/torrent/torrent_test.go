@@ -6,11 +6,6 @@ import (
 	"testing"
 )
 
-type testEntry struct {
-	path     string
-	infohash string
-}
-
 func TestTorrent(t *testing.T) {
 	tests := []struct {
 		name     string

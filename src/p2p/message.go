@@ -1,4 +1,4 @@
-package protocol
+package p2p
 
 import (
 	"encoding/binary"
@@ -15,17 +15,11 @@ const (
 	TypeRequest
 	TypePiece
 	TypeCancel
+	TypeKeepAlive = uint8(255) // Not in BEP_0003, however makes checking easy
 )
 
 // MaxMsgType is the max value for a message type given by spec (BEP_0003).
 const MaxMsgType = uint8(8)
-
-// KeepAlive is a global keep alive message. We will be sending lots of these,
-// doesn't make sense to allocate a new one every time.
-var KeepAlive = MsgBase{
-	length: 0,
-	mtype:  0,
-}
 
 // ============================================================================
 // TYPES ======================================================================
@@ -53,7 +47,7 @@ func (m *MsgBase) Mtype() uint8 {
 }
 
 func (m *MsgBase) Encode() []byte {
-	pl := make([]byte, 0, 5)
+	pl := make([]byte, 5, 5)
 	binary.BigEndian.PutUint32(pl, m.length)
 	pl[4] = m.mtype
 
@@ -79,17 +73,24 @@ func Decode(data []byte) (Message, error) {
 		return nil, fmt.Errorf("message length must be at least 4, got %v", datalen)
 	}
 
-	length := binary.BigEndian.Uint32(data[:4])
+	// Get message length
+	msglen := binary.BigEndian.Uint32(data[:4])
 
 	// Len 0000 indicates keep alive message
-	if length == 0 {
-		return &KeepAlive, nil
+	if msglen == 0 {
+		return &KeepAliveSingleton, nil
 	}
 
+	// Get message type
 	if datalen < 5 {
 		return nil, fmt.Errorf("non-keep-alive message length must be at least 5, got %v", datalen)
 	}
 	mtype := uint8(data[4])
+
+	// Check invalid message
+	if mtype <= 4 && msglen != 1 {
+		return nil, fmt.Errorf("invalid message, length for id [0-3] must be 1, got %v", msglen)
+	}
 
 	// Messages with no payload
 	switch mtype {
@@ -104,12 +105,12 @@ func Decode(data []byte) (Message, error) {
 	}
 
 	// Messages with payload
-	if uint32(len(data)) < 4+length {
-		return nil, fmt.Errorf("length specified as %v, payload length is %v", length, len(data))
+	if uint32(len(data)) < 4+msglen {
+		return nil, fmt.Errorf("length specified as %v, payload length is %v", msglen, len(data))
 	}
 
 	// Exclude the length (byte 4)
-	payload := data[5 : length-1]
+	payload := data[5 : msglen-1]
 
 	switch mtype {
 	case TypeHave:
@@ -121,7 +122,7 @@ func Decode(data []byte) (Message, error) {
 		msg, err := DecodeMsgRequest(payload)
 		return msg, err
 	case TypePiece:
-		msg, err := DecodeMsgPiece(payload, length)
+		msg, err := DecodeMsgPiece(payload, msglen)
 		return msg, err
 	default:
 		return nil, fmt.Errorf("unknown message type %v", mtype)
