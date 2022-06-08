@@ -9,8 +9,11 @@ import (
 	"fmt"
 )
 
-// LenHave is the length of the message as defined in BEP_0003
-const LenHave = uint32(5)
+// LenHave is the total length of the message in bytes (len+type+payload)
+const LenHave = uint32(9)
+
+// LenHaveSpec is the length of the message as defined in BEP_0003
+const LenHaveSpec = uint32(5)
 
 // LenHavePayload is the payload size in bytes
 const LenHavePayload = uint32(4)
@@ -29,7 +32,7 @@ type MsgHave struct {
 func NewMsgHave(idx uint32) *MsgHave {
 	return &MsgHave{
 		MsgBase: MsgBase{
-			length: LenHave,
+			length: LenHaveSpec,
 			mtype:  TypeHave,
 		},
 		index: idx,
@@ -39,7 +42,7 @@ func NewMsgHave(idx uint32) *MsgHave {
 // ============================================================================
 // GETTER =====================================================================
 
-func (h *MsgHave) PieceIdx() uint32 {
+func (h *MsgHave) Index() uint32 {
 	return h.index
 }
 
@@ -47,8 +50,9 @@ func (h *MsgHave) PieceIdx() uint32 {
 // IMPL =======================================================================
 
 func (h *MsgHave) Encode() []byte {
-	pl := h.MsgBase.Encode()
-	binary.BigEndian.PutUint32(pl, h.index)
+	pl := make([]byte, LenHave, LenHave)
+	h.MsgBase.fillBase(pl)
+	binary.BigEndian.PutUint32(pl[5:LenHave], h.index)
 	return pl
 }
 

@@ -57,6 +57,15 @@ func (m *MsgBase) Encode() []byte {
 // ============================================================================
 // FUNC =======================================================================
 
+// fillBase should be used by structs that implement the Message interface to
+// fill the output byte slice (buf) when encoding. Use this instead of calling
+// MsgBase.Encode() to avoid allocating multiple byte slices.
+func (m *MsgBase) fillBase(buf []byte) {
+	_ = buf[5] // bounds check hint to compiler; see golang.org/issue/14808
+	binary.BigEndian.PutUint32(buf, m.length)
+	buf[4] = m.mtype
+}
+
 // DecodeAll reads through all the messages encoded in the data byte slice
 // and returns all the messages and errors it encountered when reading.
 func DecodeAll(data []byte) ([]*MsgBase, []error) {
@@ -88,7 +97,7 @@ func Decode(data []byte) (Message, error) {
 	mtype := uint8(data[4])
 
 	// Check invalid message
-	if mtype <= 4 && msglen != 1 {
+	if mtype <= 3 && msglen != 1 {
 		return nil, fmt.Errorf("invalid message, length for id [0-3] must be 1, got %v", msglen)
 	}
 
@@ -110,7 +119,7 @@ func Decode(data []byte) (Message, error) {
 	}
 
 	// Exclude the length (byte 4)
-	payload := data[5 : msglen-1]
+	payload := data[5 : 5+msglen-1]
 
 	switch mtype {
 	case TypeHave:

@@ -24,7 +24,7 @@ type MsgPiece struct {
 func NewMsgPiece(index uint32, begin uint32, block []byte) *MsgPiece {
 	return &MsgPiece{
 		MsgBase: MsgBase{
-			length: LenHave,
+			length: LenHaveSpec,
 			mtype:  TypeHave,
 		},
 		index: index,
