@@ -65,7 +65,7 @@ func TestBitfieldEncode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			want := append(tt.base, tt.bf...)
-			msg, err := NewMsgBitfield(tt.bf, uint32(len(tt.bf))+1)
+			msg, err := DecodeMsgBitfield(tt.bf, uint32(len(tt.bf))+1)
 			if err != nil {
 				t.Error(err)
 			}

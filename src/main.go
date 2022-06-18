@@ -32,6 +32,12 @@ func CmdSwarm(opts *utils.Opts) {
 	}
 
 	fmt.Println("\n", s.String())
+
+	s.Start()
+
+	for {
+
+	}
 }
 
 func CmdTorInfo(opts *utils.Opts) {

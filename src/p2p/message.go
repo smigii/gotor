@@ -126,7 +126,7 @@ func Decode(data []byte) (Message, error) {
 		msg, err := DecodeMsgHave(payload)
 		return msg, err
 	case TypeBitfield:
-		msg, err := NewMsgBitfield(payload, msglen)
+		msg, err := DecodeMsgBitfield(payload, msglen)
 		return msg, err
 	case TypeRequest:
 		msg, err := DecodeMsgRequest(payload)

@@ -1,13 +1,15 @@
 package swarm
 
 const HandshakeLen = uint8(68)
+const HandshakePstrLen = uint8(19)
+const HandshakePstr = "BitTorrent protocol"
 
 type Handshake []byte
 
 func MakeHandshake(infohash string, id string) Handshake {
 	hs := make(Handshake, HandshakeLen, HandshakeLen)
-	hs[0] = 19
-	copy(hs[1:], "BitTorrent protocol")
+	hs[0] = HandshakePstrLen
+	copy(hs[1:], HandshakePstr)
 	copy(hs[28:], infohash)
 	copy(hs[48:], id)
 	return hs

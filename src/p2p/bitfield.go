@@ -10,26 +10,20 @@ const MinLenBitfield = uint32(5)
 
 type MsgBitfield struct {
 	MsgBase
-	bitfield []byte
+	bitfield []byte // INCLUDES THE 5 PREFIX BYTES (id<1> + len<4> + bf<X>)
 }
 
 // ============================================================================
 // CONSTRUCTORS ===============================================================
 
-// NewMsgBitfield does what you think. It explicitly asks for the length
-// of the bitfield, you should pass the length that was encoded in the
-// full message, to ensure that the entire bitfield is being stored.
-func NewMsgBitfield(bitfield []byte, msglen uint32) (*MsgBitfield, error) {
-	if uint32(len(bitfield)) != msglen-1 {
-		return nil, fmt.Errorf("message length (%v) does not match bitfield length (%v)", msglen, len(bitfield))
-	}
+func NewMsgBitfield(bitfield []byte) *MsgBitfield {
 	return &MsgBitfield{
 		MsgBase: MsgBase{
-			length: msglen,
+			length: 1 + uint32(len(bitfield)),
 			mtype:  TypeBitfield,
 		},
 		bitfield: bitfield,
-	}, nil
+	}
 }
 
 // ============================================================================
@@ -52,4 +46,23 @@ func (bf *MsgBitfield) Encode() []byte {
 	bf.MsgBase.fillBase(pl)
 	pl = append(pl, bf.bitfield...)
 	return pl
+}
+
+// ============================================================================
+// FUNC =======================================================================
+
+// DecodeMsgBitfield does what you think. It explicitly asks for the length
+// of the bitfield, you should pass the length that was encoded in the
+// full message, to ensure that the entire bitfield is being stored.
+func DecodeMsgBitfield(bitfield []byte, msglen uint32) (*MsgBitfield, error) {
+	if uint32(len(bitfield)) != msglen-1 {
+		return nil, fmt.Errorf("message length (%v) does not match bitfield length (%v)", msglen, len(bitfield))
+	}
+	return &MsgBitfield{
+		MsgBase: MsgBase{
+			length: msglen,
+			mtype:  TypeBitfield,
+		},
+		bitfield: bitfield,
+	}, nil
 }
