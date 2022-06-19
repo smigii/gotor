@@ -2,8 +2,8 @@ package p2p
 
 import "fmt"
 
-// MinLenBitfield is the minimum total length of the message (len+type+payload)
-const MinLenBitfield = uint32(5)
+// MsgBitfieldMinLen is the minimum total length of the message (len 4 + type 1 + payload 0)
+const MsgBitfieldMinLen = uint32(5)
 
 // ============================================================================
 // TYPES ======================================================================
@@ -42,7 +42,7 @@ func (bf *MsgBitfield) Encode() []byte {
 	// copying over 1000 elements every time we call Encode(). For
 	// larger torrents, this could cause some bad performance.
 	bflen := uint32(len(bf.bitfield))
-	pl := make([]byte, MinLenBitfield, MinLenBitfield+bflen)
+	pl := make([]byte, MsgBitfieldMinLen, MsgBitfieldMinLen+bflen)
 	bf.msgBase.fillBase(pl)
 	pl = append(pl, bf.bitfield...)
 	return pl

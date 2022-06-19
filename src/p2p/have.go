@@ -10,14 +10,16 @@ import (
 	"strings"
 )
 
-// LenHave is the total length of the message in bytes (len+type+payload)
-const LenHave = uint32(9)
+const (
+	// MsgHaveTotalLen is the total length of the message in bytes (len 4 + type 1 + payload 4)
+	MsgHaveTotalLen = uint32(9)
 
-// LenHaveSpec is the length of the message as defined in BEP_0003
-const LenHaveSpec = uint32(5)
+	// MsgHaveSpecLen is the length of the message as defined in BEP_0003 (id 1 + payload 4)
+	MsgHaveSpecLen = uint32(5)
 
-// LenHavePayload is the payload size in bytes
-const LenHavePayload = uint32(4)
+	// MsgHavePayloadLen is the payload size in bytes
+	MsgHavePayloadLen = uint32(4)
+)
 
 // ============================================================================
 // TYPES ======================================================================
@@ -33,7 +35,7 @@ type MsgHave struct {
 func NewMsgHave(idx uint32) *MsgHave {
 	return &MsgHave{
 		msgBase: msgBase{
-			length: LenHaveSpec,
+			length: MsgHaveSpecLen,
 			mtype:  TypeHave,
 		},
 		index: idx,
@@ -51,9 +53,9 @@ func (h *MsgHave) Index() uint32 {
 // IMPL =======================================================================
 
 func (h *MsgHave) Encode() []byte {
-	pl := make([]byte, LenHave, LenHave)
+	pl := make([]byte, MsgHaveTotalLen, MsgHaveTotalLen)
 	h.msgBase.fillBase(pl)
-	binary.BigEndian.PutUint32(pl[PayloadStart:LenHave], h.index)
+	binary.BigEndian.PutUint32(pl[PayloadStart:MsgHaveTotalLen], h.index)
 	return pl
 }
 
@@ -68,8 +70,8 @@ func (h *MsgHave) String() string {
 // FUNC =======================================================================
 
 func DecodeMsgHave(payload []byte) (*MsgHave, error) {
-	if uint32(len(payload)) != LenHavePayload {
-		return nil, fmt.Errorf("have message must have %v byte payload, got %v", LenHavePayload, len(payload))
+	if uint32(len(payload)) != MsgHavePayloadLen {
+		return nil, fmt.Errorf("have message must have %v byte payload, got %v", MsgHavePayloadLen, len(payload))
 	}
 	idx := binary.BigEndian.Uint32(payload)
 	return NewMsgHave(idx), nil

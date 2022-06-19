@@ -7,7 +7,8 @@ import (
 
 func TestKeepAliveDecode(t *testing.T) {
 	data := []byte{0, 0, 0, 0}
-	msg, err := Decode(data)
+	dr, err := Decode(data)
+	msg := dr.Msg
 
 	if err != nil {
 		t.Error(err)

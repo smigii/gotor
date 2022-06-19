@@ -6,11 +6,16 @@ import (
 	"strings"
 )
 
-// LenRequest is the length of the message as defined in BEP_0003
-const LenRequest = uint32(13)
+const (
+	// MsgRequestTotalLen is the total length of a request message (len 4 + id 1 + payload 12)
+	MsgRequestTotalLen = uint8(17)
 
-// LenRequestPayload is the payload size in bytes
-const LenRequestPayload = uint32(12)
+	// MsgRequestSpecLen is the length of the message as defined in BEP_0003
+	MsgRequestSpecLen = uint32(13)
+
+	// MsgRequestPayloadLen is the payload size in bytes
+	MsgRequestPayloadLen = uint32(12)
+)
 
 // ============================================================================
 // TYPES ======================================================================
@@ -28,7 +33,7 @@ type MsgRequest struct {
 func NewMsgRequest(index uint32, begin uint32, reqlen uint32) *MsgRequest {
 	return &MsgRequest{
 		msgBase: msgBase{
-			length: LenRequest,
+			length: MsgRequestSpecLen,
 			mtype:  TypeRequest,
 		},
 		index:  index,
@@ -76,8 +81,8 @@ func (mp *MsgRequest) String() string {
 // FUNC =======================================================================
 
 func DecodeMsgRequest(payload []byte) (*MsgRequest, error) {
-	if uint32(len(payload)) != LenRequestPayload {
-		return nil, fmt.Errorf("request message must have %v byte payload, got %v", LenRequestPayload, len(payload))
+	if uint32(len(payload)) != MsgRequestPayloadLen {
+		return nil, fmt.Errorf("request message must have %v byte payload, got %v", MsgRequestPayloadLen, len(payload))
 	}
 	index := binary.BigEndian.Uint32(payload[0:4])
 	begin := binary.BigEndian.Uint32(payload[4:8])

@@ -6,6 +6,8 @@ messages.
 
 package p2p
 
+const MsgKeepAliveTotalLen = uint8(4)
+
 type MsgKeepAlive struct {
 	msgBase
 }

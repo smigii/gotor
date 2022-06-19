@@ -51,7 +51,8 @@ func TestHaveDecode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg, err := Decode(tt.data)
+			dr, err := Decode(tt.data)
+			msg := dr.Msg
 			if tt.err {
 				if err == nil {
 					t.Error("expected error")

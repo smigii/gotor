@@ -5,6 +5,20 @@ respectively).
 
 package p2p
 
+const (
+	// MsgChokeTotalLen is the total length of choke (4 len + 1 type)
+	MsgChokeTotalLen = uint8(5)
+
+	// MsgUnchokeTotalLen is the total length of choke (4 len + 1 type)
+	MsgUnchokeTotalLen = uint8(5)
+
+	// MsgInterestedTotalLen is the total length of choke (4 len + 1 type)
+	MsgInterestedTotalLen = uint8(5)
+
+	// MsgNotInterestedTotalLen is the total length of choke (4 len + 1 type)
+	MsgNotInterestedTotalLen = uint8(5)
+)
+
 // ============================================================================
 // TYPES ======================================================================
 

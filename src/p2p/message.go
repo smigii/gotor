@@ -19,6 +19,9 @@ const (
 	TypeKeepAlive = uint8(255) // Not in BEP_0003, however makes checking easy
 )
 
+// MsgLengthPrefixLen is the length of the 4 byte <length prefix> of all p2p messages
+const MsgLengthPrefixLen = uint8(4)
+
 // PayloadStart is the starting index of the payload for all p2p messages
 const PayloadStart = uint32(5)
 
@@ -26,10 +29,24 @@ const PayloadStart = uint32(5)
 // TYPES ======================================================================
 
 type Message interface {
-	Length() uint32
+	Length() uint32 // Length of the message's ID and payload (1 + X). Excludes 4 byte length
 	Mtype() uint8
 	Encode() []byte
 	String() string
+}
+
+// DecodeAllResult holds the decoded messages, as well as the number of bytes
+// that were succesfully read out of the given byte slice.
+type DecodeAllResult struct {
+	Msgs []Message
+	Read uint64 // Number of bytes succesfully read
+}
+
+// DecodeResult holds the decoded Message and the number of bytes that were
+// read from the given byte slice.
+type DecodeResult struct {
+	Msg  Message
+	Read uint64 // Number of bytes read
 }
 
 type msgBase struct {
@@ -75,75 +92,125 @@ func (m *msgBase) fillBase(buf []byte) {
 	buf[4] = m.mtype
 }
 
-// DecodeAll reads through all the messages encoded in the data byte slice
-// and returns all the messages and errors it encountered when reading.
-func DecodeAll(data []byte) ([]*msgBase, []error) {
+// DecodeAll reads through all the messages encoded in the data byte slice and
+// returns a DecodeAllResult containing the decoded Message struct and the
+// number of bytes read from the data byte slice.
+func DecodeAll(data []byte) DecodeAllResult {
+	msgs := make([]Message, 0, 8)
 
-	return nil, nil
+	idx := uint64(0)
+	read := uint64(0)
+
+	for {
+		if idx >= uint64(len(data)) {
+			break
+		}
+		dr, err := Decode(data[idx:])
+		if err == nil {
+			msgs = append(msgs, dr.Msg)
+			read += dr.Read
+		}
+		idx += dr.Read
+	}
+
+	return DecodeAllResult{
+		Msgs: msgs,
+		Read: read,
+	}
 }
 
-// Decode returns a single message or error from the data byte slice
-func Decode(data []byte) (Message, error) {
+// Decode decodes a single Message from the provided byte slice data. Returns a
+// DecodeResult containing the decoded Message and the number of bytes read
+// from the byte slice.
+func Decode(data []byte) (DecodeResult, error) {
+
+	// Error value
+	badResult := DecodeResult{
+		Msg:  nil,
+		Read: 0,
+	}
 
 	// All messages have a 4 byte length prefix
 	datalen := len(data)
-	if datalen < 4 {
-		return nil, fmt.Errorf("message length must be at least 4, got %v", datalen)
+	if datalen < int(MsgLengthPrefixLen) {
+		return badResult, fmt.Errorf("message length must be at least 4, got %v", datalen)
 	}
 
 	// Get message length
-	msglen := binary.BigEndian.Uint32(data[:4])
+	msglen := binary.BigEndian.Uint32(data[:MsgLengthPrefixLen])
 
 	// Len 0000 indicates keep alive message
 	if msglen == 0 {
-		return &KeepAliveSingleton, nil
+		return DecodeResult{
+			Msg:  &KeepAliveSingleton,
+			Read: uint64(MsgKeepAliveTotalLen),
+		}, nil
 	}
 
 	// Get message type
 	if datalen < 5 {
-		return nil, fmt.Errorf("non-keep-alive message length must be at least 5, got %v", datalen)
+		return badResult, fmt.Errorf("non-keep-alive message length must be at least 5, got %v", datalen)
 	}
 	mtype := uint8(data[4])
 
-	// Check invalid message
 	if mtype <= 3 && msglen != 1 {
-		return nil, fmt.Errorf("invalid message, length for id [0-3] must be 1, got %v", msglen)
-	}
-
-	// Messages with no payload
-	switch mtype {
-	case TypeChoke:
-		return NewMsgChoke(), nil
-	case TypeUnchoke:
-		return NewMsgUnchoke(), nil
-	case TypeInterested:
-		return NewMsgInterested(), nil
-	case TypeNotInterested:
-		return NewMsgNotInterested(), nil
-	}
-
-	// Messages with payload
-	if uint32(len(data)) < 4+msglen {
-		return nil, fmt.Errorf("length specified as %v, payload length is %v", msglen, len(data))
+		// Check invalid message for no-payload messages
+		// Type 0 = Choke
+		// Type 1 = Unchoke
+		// Type 2 = Interested
+		// Type 3 = Not Interested
+		return badResult, fmt.Errorf("invalid message, length for id [0-3] must be 1, got %v", msglen)
+	} else if uint32(len(data)) < 4+msglen {
+		// Messages with payload
+		return badResult, fmt.Errorf("length specified as %v, payload length is %v", msglen, len(data))
 	}
 
 	// msglen includes length byte, -1 to exclude it
 	payload := data[PayloadStart : PayloadStart+msglen-1]
 
+	var msg Message
+	var n uint64
+	var err error
+
+	// Messages with no payload
 	switch mtype {
+	case TypeChoke:
+		msg = NewMsgChoke()
+		n = uint64(MsgChokeTotalLen)
+		err = nil
+	case TypeUnchoke:
+		msg = NewMsgUnchoke()
+		n = uint64(MsgUnchokeTotalLen)
+		err = nil
+	case TypeInterested:
+		msg = NewMsgInterested()
+		n = uint64(MsgInterestedTotalLen)
+		err = nil
+	case TypeNotInterested:
+		msg = NewMsgNotInterested()
+		n = uint64(MsgNotInterestedTotalLen)
+		err = nil
 	case TypeHave:
-		msg, err := DecodeMsgHave(payload)
-		return msg, err
+		msg, err = DecodeMsgHave(payload)
+		n = uint64(MsgHaveTotalLen)
 	case TypeBitfield:
-		msg, err := DecodeMsgBitfield(payload, msglen)
-		return msg, err
+		msg, err = DecodeMsgBitfield(payload, msglen)
+		n = uint64(uint32(MsgLengthPrefixLen) + msg.Length())
 	case TypeRequest:
-		msg, err := DecodeMsgRequest(payload)
-		return msg, err
+		msg, err = DecodeMsgRequest(payload)
+		n = uint64(MsgRequestTotalLen)
 	case TypePiece:
-		msg, err := DecodeMsgPiece(payload, msglen)
-		return msg, err
+		msg, err = DecodeMsgPiece(payload, msglen)
+		n = uint64(uint32(MsgLengthPrefixLen) + msg.Length())
 	default:
-		return nil, fmt.Errorf("unknown message type %v", mtype)
+		msg = nil
+		err = fmt.Errorf("unknown message type %v", mtype)
+		// Force DecodeResult to be unusable, entire data byte slice should be discarded
+		n = uint64(len(data))
 	}
+
+	return DecodeResult{
+		Msg:  msg,
+		Read: n,
+	}, err
 }

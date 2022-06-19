@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// MinLenPiece is the minimum length of a piece message's payload
-const MinLenPiece = uint32(8)
+// MsgPieceMinPayloadLen is the minimum length of a piece message's payload
+const MsgPieceMinPayloadLen = uint32(8)
 
 // ============================================================================
 // TYPES ======================================================================
@@ -25,7 +25,7 @@ type MsgPiece struct {
 func NewMsgPiece(index uint32, begin uint32, block []byte) *MsgPiece {
 	return &MsgPiece{
 		msgBase: msgBase{
-			length: LenHaveSpec,
+			length: uint32(1 + int(MsgPieceMinPayloadLen) + len(block)),
 			mtype:  TypeHave,
 		},
 		index: index,
@@ -74,10 +74,10 @@ func (mp *MsgPiece) String() string {
 
 func DecodeMsgPiece(payload []byte, length uint32) (*MsgPiece, error) {
 	if uint32(len(payload)) != length {
-		return nil, fmt.Errorf("piece message must have %v byte payload, got %v", LenHavePayload, len(payload))
+		return nil, fmt.Errorf("piece message must have %v byte payload, got %v", MsgHavePayloadLen, len(payload))
 	}
-	if uint32(len(payload)) < MinLenPiece {
-		return nil, fmt.Errorf("piece message payload must be at least %v bytes, got %v", MinLenPiece, len(payload))
+	if uint32(len(payload)) < MsgPieceMinPayloadLen {
+		return nil, fmt.Errorf("piece message payload must be at least %v bytes, got %v", MsgPieceMinPayloadLen, len(payload))
 	}
 	index := binary.BigEndian.Uint32(payload[0:4])
 	begin := binary.BigEndian.Uint32(payload[4:8])

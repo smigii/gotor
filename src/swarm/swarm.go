@@ -173,7 +173,8 @@ func (s *Swarm) HandlePeer(peer *peer.Peer) {
 		fmt.Println(buf[:n])
 		fmt.Println("--- END ---")
 
-		msg, e := p2p.Decode(buf)
+		dr, e := p2p.Decode(buf)
+		msg := dr.Msg
 		if e != nil {
 			log.Println(e)
 		} else {
