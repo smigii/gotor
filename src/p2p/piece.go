@@ -62,10 +62,10 @@ func (mp *MsgPiece) Encode() []byte {
 
 func (mp *MsgPiece) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(mp.msgBase.String())
+	strb.WriteString("Message: Piece\n")
 	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
 	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
-	strb.WriteString(fmt.Sprintf("Block: %v\n", mp.block))
+	strb.WriteString(fmt.Sprintf("Block: %v", mp.block))
 	return strb.String()
 }
 

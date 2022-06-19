@@ -5,6 +5,8 @@ respectively).
 
 package p2p
 
+import "strings"
+
 const (
 	// MsgChokeTotalLen is the total length of choke (4 len + 1 type)
 	MsgChokeTotalLen = uint8(5)
@@ -64,4 +66,28 @@ func NewMsgNotInterested() *MsgNotInterested {
 			mtype:  TypeNotInterested,
 		},
 	}
+}
+
+func (m *MsgChoke) String() string {
+	strb := strings.Builder{}
+	strb.WriteString("Message: Choke")
+	return strb.String()
+}
+
+func (m *MsgUnchoke) String() string {
+	strb := strings.Builder{}
+	strb.WriteString("Message: Unchoke")
+	return strb.String()
+}
+
+func (m *MsgInterested) String() string {
+	strb := strings.Builder{}
+	strb.WriteString("Message: Interested")
+	return strb.String()
+}
+
+func (m *MsgNotInterested) String() string {
+	strb := strings.Builder{}
+	strb.WriteString("Message: Not Interested")
+	return strb.String()
 }

@@ -24,3 +24,7 @@ var KeepAliveSingleton = MsgKeepAlive{
 func (ka *MsgKeepAlive) Encode() []byte {
 	return []byte{0, 0, 0, 0}
 }
+
+func (ka *MsgKeepAlive) String() string {
+	return "Message: Keep Alive"
+}

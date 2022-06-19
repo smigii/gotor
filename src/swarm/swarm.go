@@ -169,17 +169,15 @@ func (s *Swarm) HandlePeer(peer *peer.Peer) {
 			break
 		}
 
-		fmt.Println("--- MESSAGE ---")
+		fmt.Println("\n--- MESSAGE ---")
 		fmt.Println(buf[:n])
-		fmt.Println("--- END ---")
+		fmt.Println("--- END ---\n")
 
-		dr, e := p2p.Decode(buf)
-		msg := dr.Msg
-		if e != nil {
-			log.Println(e)
-		} else {
-			log.Printf("New message from %v\n", peer.Conn.RemoteAddr())
-			fmt.Println(msg.String())
+		dar := p2p.DecodeAll(buf[:n])
+		pcent := 100.0 * float32(dar.Read) / float32(n)
+		log.Printf("Decoded %v/%v (%v%%) bytes from %v\n\n", dar.Read, n, pcent, peer.Conn.RemoteAddr())
+		for _, msg := range dar.Msgs {
+			fmt.Println(msg.String(), "\n")
 		}
 	}
 }

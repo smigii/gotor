@@ -1,6 +1,9 @@
 package p2p
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // MsgBitfieldMinLen is the minimum total length of the message (len 4 + type 1 + payload 0)
 const MsgBitfieldMinLen = uint32(5)
@@ -46,6 +49,12 @@ func (bf *MsgBitfield) Encode() []byte {
 	bf.msgBase.fillBase(pl)
 	pl = append(pl, bf.bitfield...)
 	return pl
+}
+
+func (bf *MsgBitfield) String() string {
+	strb := strings.Builder{}
+	strb.WriteString("Message: Bitfield\n")
+	return strb.String()
 }
 
 // ============================================================================

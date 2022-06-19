@@ -70,10 +70,10 @@ func (h *MsgRequest) Encode() []byte {
 
 func (mp *MsgRequest) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(mp.msgBase.String())
+	strb.WriteString("Message: Request\n")
 	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
 	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
-	strb.WriteString(fmt.Sprintf("Req Len: %v\n", mp.reqlen))
+	strb.WriteString(fmt.Sprintf("Req Len: %v", mp.reqlen))
 	return strb.String()
 }
 

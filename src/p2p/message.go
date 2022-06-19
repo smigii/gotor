@@ -75,8 +75,9 @@ func (m *msgBase) Encode() []byte {
 
 func (m *msgBase) String() string {
 	strb := strings.Builder{}
+	strb.WriteString("Base Message\n")
 	strb.WriteString(fmt.Sprintf("  Type: %v\n", m.mtype))
-	strb.WriteString(fmt.Sprintf("Length: %v\n", m.length))
+	strb.WriteString(fmt.Sprintf("Length: %v", m.length))
 	return strb.String()
 }
 

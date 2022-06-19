@@ -61,8 +61,8 @@ func (h *MsgHave) Encode() []byte {
 
 func (h *MsgHave) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(h.msgBase.String())
-	strb.WriteString(fmt.Sprintf("Index: %v\n", h.index))
+	strb.WriteString("Message: Have\n")
+	strb.WriteString(fmt.Sprintf("Index: %v", h.index))
 	return strb.String()
 }
 
