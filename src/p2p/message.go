@@ -125,9 +125,13 @@ func DecodeAll(data []byte) DecodeAllResult {
 func Decode(data []byte) (DecodeResult, error) {
 
 	// Error value
+	// For now, force caller to discard remaining data. If this function
+	// throws an error, the data should be assumed to be garbage. Setting
+	// Read to len(data) means the caller won't know how much data is
+	// left.
 	badResult := DecodeResult{
 		Msg:  nil,
-		Read: 0,
+		Read: uint64(len(data)),
 	}
 
 	// All messages have a 4 byte length prefix

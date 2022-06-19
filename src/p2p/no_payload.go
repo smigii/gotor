@@ -22,38 +22,46 @@ const (
 // ============================================================================
 // TYPES ======================================================================
 
-type MsgChoke = msgBase
-type MsgUnchoke = msgBase
-type MsgInterested = msgBase
-type MsgNotInterested = msgBase
+type MsgChoke struct{ msgBase }
+type MsgUnchoke struct{ msgBase }
+type MsgInterested struct{ msgBase }
+type MsgNotInterested struct{ msgBase }
 
 // ============================================================================
 // CONSTRUCTORS ===============================================================
 
 func NewMsgChoke() *MsgChoke {
 	return &MsgChoke{
-		length: 1,
-		mtype:  TypeChoke,
+		msgBase: msgBase{
+			length: 1,
+			mtype:  TypeChoke,
+		},
 	}
 }
 
 func NewMsgUnchoke() *MsgUnchoke {
 	return &MsgUnchoke{
-		length: 1,
-		mtype:  TypeUnchoke,
+		msgBase: msgBase{
+			length: 1,
+			mtype:  TypeUnchoke,
+		},
 	}
 }
 
 func NewMsgInterested() *MsgInterested {
 	return &MsgInterested{
-		length: 1,
-		mtype:  TypeInterested,
+		msgBase: msgBase{
+			length: 1,
+			mtype:  TypeInterested,
+		},
 	}
 }
 
 func NewMsgNotInterested() *MsgNotInterested {
 	return &MsgNotInterested{
-		length: 1,
-		mtype:  TypeNotInterested,
+		msgBase: msgBase{
+			length: 1,
+			mtype:  TypeNotInterested,
+		},
 	}
 }
