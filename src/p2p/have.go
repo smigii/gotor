@@ -7,6 +7,7 @@ package p2p
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // LenHave is the total length of the message in bytes (len+type+payload)
@@ -54,6 +55,13 @@ func (h *MsgHave) Encode() []byte {
 	h.MsgBase.fillBase(pl)
 	binary.BigEndian.PutUint32(pl[PayloadStart:LenHave], h.index)
 	return pl
+}
+
+func (h *MsgHave) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(h.MsgBase.String())
+	strb.WriteString(fmt.Sprintf("Index: %v\n", h.index))
+	return strb.String()
 }
 
 // ============================================================================

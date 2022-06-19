@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // MinLenPiece is the minimum length of a piece message's payload
@@ -57,6 +58,15 @@ func (mp *MsgPiece) Encode() []byte {
 	binary.BigEndian.PutUint32(pl, mp.begin)
 	pl = append(pl, mp.block...)
 	return pl
+}
+
+func (mp *MsgPiece) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(mp.MsgBase.String())
+	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
+	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
+	strb.WriteString(fmt.Sprintf("Block: %v\n", mp.block))
+	return strb.String()
 }
 
 // ============================================================================

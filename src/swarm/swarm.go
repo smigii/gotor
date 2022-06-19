@@ -153,6 +153,14 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 }
 
 func (s *Swarm) HandlePeer(peer *peer.Peer) {
+
+	// For now, just unchoke everyone
+	msg := p2p.NewMsgUnchoke()
+	_, e := peer.Conn.Write(msg.Encode())
+	if e != nil {
+		log.Printf("error unchoking: %v\n", e)
+	}
+
 	buf := make([]byte, 2048)
 	for {
 		n, e := peer.Conn.Read(buf)
@@ -164,7 +172,7 @@ func (s *Swarm) HandlePeer(peer *peer.Peer) {
 		if e != nil {
 			log.Println(e)
 		}
-		log.Println(msg)
+		log.Println(msg.String())
 	}
 }
 

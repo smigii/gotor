@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 const (
@@ -28,6 +29,7 @@ type Message interface {
 	Length() uint32
 	Mtype() uint8
 	Encode() []byte
+	String() string
 }
 
 type MsgBase struct {
@@ -52,6 +54,13 @@ func (m *MsgBase) Encode() []byte {
 	pl[4] = m.mtype
 
 	return pl
+}
+
+func (m *MsgBase) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(fmt.Sprintf("  Type: %v\n", m.mtype))
+	strb.WriteString(fmt.Sprintf("Length: %v\n", m.length))
+	return strb.String()
 }
 
 // ============================================================================

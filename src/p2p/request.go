@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // LenRequest is the length of the message as defined in BEP_0003
@@ -60,6 +61,15 @@ func (h *MsgRequest) Encode() []byte {
 	binary.BigEndian.PutUint32(pl, h.begin)
 	binary.BigEndian.PutUint32(pl, h.reqlen)
 	return pl
+}
+
+func (mp *MsgRequest) String() string {
+	strb := strings.Builder{}
+	strb.WriteString(mp.MsgBase.String())
+	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
+	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
+	strb.WriteString(fmt.Sprintf("Req Len: %v\n", mp.reqlen))
+	return strb.String()
 }
 
 // ============================================================================
