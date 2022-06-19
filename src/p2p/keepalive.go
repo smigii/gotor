@@ -7,13 +7,13 @@ messages.
 package p2p
 
 type MsgKeepAlive struct {
-	MsgBase
+	msgBase
 }
 
 // KeepAliveSingleton is a global keep alive message. We will be sending lots of these,
 // doesn't make sense to allocate a new one every time.
 var KeepAliveSingleton = MsgKeepAlive{
-	MsgBase: MsgBase{
+	msgBase: msgBase{
 		length: 0,
 		mtype:  TypeKeepAlive,
 	},

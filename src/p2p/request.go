@@ -16,7 +16,7 @@ const LenRequestPayload = uint32(12)
 // TYPES ======================================================================
 
 type MsgRequest struct {
-	MsgBase
+	msgBase
 	index  uint32
 	begin  uint32
 	reqlen uint32 // Length of request, not message
@@ -27,7 +27,7 @@ type MsgRequest struct {
 
 func NewMsgRequest(index uint32, begin uint32, reqlen uint32) *MsgRequest {
 	return &MsgRequest{
-		MsgBase: MsgBase{
+		msgBase: msgBase{
 			length: LenRequest,
 			mtype:  TypeRequest,
 		},
@@ -56,7 +56,7 @@ func (h *MsgRequest) ReqLen() uint32 {
 // IMPL =======================================================================
 
 func (h *MsgRequest) Encode() []byte {
-	pl := h.MsgBase.Encode()
+	pl := h.msgBase.Encode()
 	binary.BigEndian.PutUint32(pl, h.index)
 	binary.BigEndian.PutUint32(pl, h.begin)
 	binary.BigEndian.PutUint32(pl, h.reqlen)
@@ -65,7 +65,7 @@ func (h *MsgRequest) Encode() []byte {
 
 func (mp *MsgRequest) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(mp.MsgBase.String())
+	strb.WriteString(mp.msgBase.String())
 	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
 	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
 	strb.WriteString(fmt.Sprintf("Req Len: %v\n", mp.reqlen))

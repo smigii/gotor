@@ -9,7 +9,7 @@ const MinLenBitfield = uint32(5)
 // TYPES ======================================================================
 
 type MsgBitfield struct {
-	MsgBase
+	msgBase
 	bitfield []byte // INCLUDES THE 5 PREFIX BYTES (id<1> + len<4> + bf<X>)
 }
 
@@ -18,7 +18,7 @@ type MsgBitfield struct {
 
 func NewMsgBitfield(bitfield []byte) *MsgBitfield {
 	return &MsgBitfield{
-		MsgBase: MsgBase{
+		msgBase: msgBase{
 			length: 1 + uint32(len(bitfield)),
 			mtype:  TypeBitfield,
 		},
@@ -43,7 +43,7 @@ func (bf *MsgBitfield) Encode() []byte {
 	// larger torrents, this could cause some bad performance.
 	bflen := uint32(len(bf.bitfield))
 	pl := make([]byte, MinLenBitfield, MinLenBitfield+bflen)
-	bf.MsgBase.fillBase(pl)
+	bf.msgBase.fillBase(pl)
 	pl = append(pl, bf.bitfield...)
 	return pl
 }
@@ -59,7 +59,7 @@ func DecodeMsgBitfield(bitfield []byte, msglen uint32) (*MsgBitfield, error) {
 		return nil, fmt.Errorf("message length (%v) does not match bitfield length (%v)", msglen, len(bitfield))
 	}
 	return &MsgBitfield{
-		MsgBase: MsgBase{
+		msgBase: msgBase{
 			length: msglen,
 			mtype:  TypeBitfield,
 		},

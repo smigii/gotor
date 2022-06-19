@@ -23,7 +23,7 @@ const LenHavePayload = uint32(4)
 // TYPES ======================================================================
 
 type MsgHave struct {
-	MsgBase
+	msgBase
 	index uint32
 }
 
@@ -32,7 +32,7 @@ type MsgHave struct {
 
 func NewMsgHave(idx uint32) *MsgHave {
 	return &MsgHave{
-		MsgBase: MsgBase{
+		msgBase: msgBase{
 			length: LenHaveSpec,
 			mtype:  TypeHave,
 		},
@@ -52,14 +52,14 @@ func (h *MsgHave) Index() uint32 {
 
 func (h *MsgHave) Encode() []byte {
 	pl := make([]byte, LenHave, LenHave)
-	h.MsgBase.fillBase(pl)
+	h.msgBase.fillBase(pl)
 	binary.BigEndian.PutUint32(pl[PayloadStart:LenHave], h.index)
 	return pl
 }
 
 func (h *MsgHave) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(h.MsgBase.String())
+	strb.WriteString(h.msgBase.String())
 	strb.WriteString(fmt.Sprintf("Index: %v\n", h.index))
 	return strb.String()
 }

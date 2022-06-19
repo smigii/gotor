@@ -8,10 +8,10 @@ package p2p
 // ============================================================================
 // TYPES ======================================================================
 
-type MsgChoke = MsgBase
-type MsgUnchoke = MsgBase
-type MsgInterested = MsgBase
-type MsgNotInterested = MsgBase
+type MsgChoke = msgBase
+type MsgUnchoke = msgBase
+type MsgInterested = msgBase
+type MsgNotInterested = msgBase
 
 // ============================================================================
 // CONSTRUCTORS ===============================================================

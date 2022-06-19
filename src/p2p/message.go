@@ -32,7 +32,7 @@ type Message interface {
 	String() string
 }
 
-type MsgBase struct {
+type msgBase struct {
 	length uint32
 	mtype  uint8
 }
@@ -40,15 +40,15 @@ type MsgBase struct {
 // ============================================================================
 // IMPL =======================================================================
 
-func (m *MsgBase) Length() uint32 {
+func (m *msgBase) Length() uint32 {
 	return m.length
 }
 
-func (m *MsgBase) Mtype() uint8 {
+func (m *msgBase) Mtype() uint8 {
 	return m.mtype
 }
 
-func (m *MsgBase) Encode() []byte {
+func (m *msgBase) Encode() []byte {
 	pl := make([]byte, 5, 5)
 	binary.BigEndian.PutUint32(pl, m.length)
 	pl[4] = m.mtype
@@ -56,7 +56,7 @@ func (m *MsgBase) Encode() []byte {
 	return pl
 }
 
-func (m *MsgBase) String() string {
+func (m *msgBase) String() string {
 	strb := strings.Builder{}
 	strb.WriteString(fmt.Sprintf("  Type: %v\n", m.mtype))
 	strb.WriteString(fmt.Sprintf("Length: %v\n", m.length))
@@ -68,8 +68,8 @@ func (m *MsgBase) String() string {
 
 // fillBase should be used by structs that implement the Message interface to
 // fill the output byte slice (buf) when encoding. Use this instead of calling
-// MsgBase.Encode() to avoid allocating multiple byte slices.
-func (m *MsgBase) fillBase(buf []byte) {
+// msgBase.Encode() to avoid allocating multiple byte slices.
+func (m *msgBase) fillBase(buf []byte) {
 	_ = buf[4] // bounds check hint to compiler; see golang.org/issue/14808
 	binary.BigEndian.PutUint32(buf, m.length)
 	buf[4] = m.mtype
@@ -77,7 +77,7 @@ func (m *MsgBase) fillBase(buf []byte) {
 
 // DecodeAll reads through all the messages encoded in the data byte slice
 // and returns all the messages and errors it encountered when reading.
-func DecodeAll(data []byte) ([]*MsgBase, []error) {
+func DecodeAll(data []byte) ([]*msgBase, []error) {
 
 	return nil, nil
 }

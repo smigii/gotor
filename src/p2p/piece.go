@@ -13,7 +13,7 @@ const MinLenPiece = uint32(8)
 // TYPES ======================================================================
 
 type MsgPiece struct {
-	MsgBase
+	msgBase
 	index uint32
 	begin uint32
 	block []byte
@@ -24,7 +24,7 @@ type MsgPiece struct {
 
 func NewMsgPiece(index uint32, begin uint32, block []byte) *MsgPiece {
 	return &MsgPiece{
-		MsgBase: MsgBase{
+		msgBase: msgBase{
 			length: LenHaveSpec,
 			mtype:  TypeHave,
 		},
@@ -53,7 +53,7 @@ func (mp *MsgPiece) Block() []byte {
 // IMPL =======================================================================
 
 func (mp *MsgPiece) Encode() []byte {
-	pl := mp.MsgBase.Encode()
+	pl := mp.msgBase.Encode()
 	binary.BigEndian.PutUint32(pl, mp.index)
 	binary.BigEndian.PutUint32(pl, mp.begin)
 	pl = append(pl, mp.block...)
@@ -62,7 +62,7 @@ func (mp *MsgPiece) Encode() []byte {
 
 func (mp *MsgPiece) String() string {
 	strb := strings.Builder{}
-	strb.WriteString(mp.MsgBase.String())
+	strb.WriteString(mp.msgBase.String())
 	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
 	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
 	strb.WriteString(fmt.Sprintf("Block: %v\n", mp.block))

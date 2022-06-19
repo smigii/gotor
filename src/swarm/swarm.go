@@ -161,18 +161,25 @@ func (s *Swarm) HandlePeer(peer *peer.Peer) {
 		log.Printf("error unchoking: %v\n", e)
 	}
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, 4096)
 	for {
 		n, e := peer.Conn.Read(buf)
 		if n == 0 || e != nil {
-			log.Printf("peer break %v", peer.Conn.RemoteAddr())
+			log.Printf("Peer dead %v", peer.Conn.RemoteAddr())
 			break
 		}
+
+		fmt.Println("--- MESSAGE ---")
+		fmt.Println(buf[:n])
+		fmt.Println("--- END ---")
+
 		msg, e := p2p.Decode(buf)
 		if e != nil {
 			log.Println(e)
+		} else {
+			log.Printf("New message from %v\n", peer.Conn.RemoteAddr())
+			fmt.Println(msg.String())
 		}
-		log.Println(msg.String())
 	}
 }
 
