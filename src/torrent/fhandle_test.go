@@ -13,10 +13,10 @@ func TestTest(t *testing.T) {
 
 	fh.Validate()
 
-	//e = writeEmptyFile("~/Downloads/test", 1234567890)
-	//if e != nil {
-	//	t.Error(e)
-	//}
+	e = writeEmptyFile("/home/smigii/Downloads/test/test", 698351616)
+	if e != nil {
+		t.Error(e)
+	}
 }
 
 func TestValidate(t *testing.T) {

@@ -48,7 +48,7 @@ func (fh *FHandler) Validate() bool {
 // writeEmptyFile writes an empty file of specified size.
 func writeEmptyFile(fpath string, size uint64) error {
 
-	e := os.MkdirAll(filepath.Dir(fpath), 0666)
+	e := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
 	if e != nil {
 		return e
 	}
@@ -67,8 +67,10 @@ func writeEmptyFile(fpath string, size uint64) error {
 		}
 		if writeSize < left {
 			_, e = f.Write(data)
+			left -= writeSize
 		} else {
 			_, e = f.Write(data[:left])
+			left = 0
 		}
 		if e != nil {
 			return e
