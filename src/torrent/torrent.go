@@ -35,7 +35,7 @@ type Torrent struct {
 
 type FileEntry struct {
 	length uint64
-	path   []string
+	path   string
 }
 
 // ============================================================================
@@ -83,12 +83,12 @@ func (tor *Torrent) Piece(idx uint64) (string, error) {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewTorrent(path string) (*Torrent, error) {
+func NewTorrent(fpath string) (*Torrent, error) {
 
 	tor := Torrent{}
 	var err error
 
-	fdata, err := os.ReadFile(path)
+	fdata, err := os.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,12 @@ func NewTorrent(path string) (*Torrent, error) {
 			}
 
 			// Read through list of path strings
-			pathPieces := make([]string, 0, 2)
+			strb := strings.Builder{}
+
+			// Write the directory name
+			strb.WriteString(tor.name)
+			strb.WriteByte('/')
+
 			for _, fPathEntry := range fPathList {
 				pathPiece, ok := fPathEntry.(string)
 				if !ok {
@@ -184,12 +189,14 @@ func NewTorrent(path string) (*Torrent, error) {
 						msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
 					}
 				}
-				pathPieces = append(pathPieces, pathPiece)
+				strb.WriteString(pathPiece)
+				strb.WriteByte('/')
 			}
+			l := len(strb.String())
 
 			tor.files = append(tor.files, FileEntry{
 				length: fLen,
-				path:   pathPieces,
+				path:   strb.String()[:l-1], // exclude last /
 			})
 		}
 	}
@@ -216,7 +223,7 @@ func (tor *Torrent) String() string {
 	if tor.files != nil {
 		strb.WriteString("\nFiles:\n")
 		for _, p := range tor.files {
-			strb.WriteString(strings.Join(p.path, "/"))
+			strb.WriteString(p.path)
 			strb.WriteByte('\n')
 		}
 	}
