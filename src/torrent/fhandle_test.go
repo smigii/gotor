@@ -1,6 +1,9 @@
 package torrent
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestTest(t *testing.T) {
 
@@ -13,10 +16,14 @@ func TestTest(t *testing.T) {
 
 	fh.Validate()
 
-	e = writeEmptyFile("/home/smigii/Downloads/test/test", 698351616)
-	if e != nil {
-		t.Error(e)
-	}
+	//e = writeEmptyFile("/home/smigii/Downloads/test/test", 698351616)
+	//if e != nil {
+	//	t.Error(e)
+	//}
+
+	x := tor.filelist.GetFiles(0)
+	fmt.Println(len(tor.filelist.Files()))
+	fmt.Println(len(x))
 }
 
 func TestValidate(t *testing.T) {
@@ -33,7 +40,7 @@ func TestValidate(t *testing.T) {
 	//}
 	//for _, tt := range tests {
 	//	t.Run(tt.name, func(t *testing.T) {
-	//		fh := &FHandler{
+	//		fh := &FileHandler{
 	//			wd:  tt.fields.wd,
 	//			tor: tt.fields.tor,
 	//		}

@@ -15,7 +15,7 @@ func TestTorrent(t *testing.T) {
 		{
 			name:     "multifile",
 			path:     "../../test/multifile.torrent",
-			infohash: "b253474bd8536994e4ea9e0786a4e0ea528e2530",
+			infohash: "a976fdd2ccce699eab604115408ead8560c2d095",
 		},
 		{
 			name:     "medfile",

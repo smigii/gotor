@@ -30,12 +30,7 @@ type Torrent struct {
 	pieces    string
 	numPieces uint64
 	length    uint64
-	files     []FileEntry
-}
-
-type FileEntry struct {
-	length uint64
-	path   string
+	filelist  *FileList
 }
 
 // ============================================================================
@@ -62,11 +57,14 @@ func (tor *Torrent) NumPieces() uint64 {
 }
 
 func (tor *Torrent) Length() uint64 {
+	if tor.filelist != nil {
+		return tor.filelist.Length()
+	}
 	return tor.length
 }
 
-func (tor *Torrent) Files() []FileEntry {
-	return tor.files
+func (tor *Torrent) Files() *FileList {
+	return tor.filelist
 }
 
 func (tor *Torrent) Piece(idx uint64) (string, error) {
@@ -157,47 +155,9 @@ func NewTorrent(fpath string) (*Torrent, error) {
 		}
 
 		// Read through list of file dictionaries
-		tor.files = make([]FileEntry, 0, 8)
-		for _, fEntry := range files {
-			fDict, ok := fEntry.(bencode.Dict)
-			if !ok {
-				return nil, &TorError{
-					msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
-				}
-			}
-			fLen, err := fDict.GetUint("length")
-			if err != nil {
-				return nil, err
-			}
-			tor.length += fLen
-			fPathList, err := fDict.GetList("path")
-			if err != nil {
-				return nil, err
-			}
-
-			// Read through list of path strings
-			strb := strings.Builder{}
-
-			// Write the directory name
-			strb.WriteString(tor.name)
-			strb.WriteByte('/')
-
-			for _, fPathEntry := range fPathList {
-				pathPiece, ok := fPathEntry.(string)
-				if !ok {
-					return nil, &TorError{
-						msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
-					}
-				}
-				strb.WriteString(pathPiece)
-				strb.WriteByte('/')
-			}
-			l := len(strb.String())
-
-			tor.files = append(tor.files, FileEntry{
-				length: fLen,
-				path:   strb.String()[:l-1], // exclude last /
-			})
+		tor.filelist, err = newFileList(files, &tor)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -217,12 +177,12 @@ func (tor *Torrent) String() string {
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
 	plen, units := utils.Bytes4Humans(tor.pieceLen)
 	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", tor.numPieces, plen, units))
-	bsize, units := utils.Bytes4Humans(tor.length)
+	bsize, units := utils.Bytes4Humans(tor.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
-	if tor.files != nil {
+	if tor.filelist != nil {
 		strb.WriteString("\nFiles:\n")
-		for _, p := range tor.files {
+		for _, p := range tor.filelist.Files() {
 			strb.WriteString(p.path)
 			strb.WriteByte('\n')
 		}

@@ -7,26 +7,26 @@ import (
 	"path/filepath"
 )
 
-type FHandler struct {
+type FileHandler struct {
 	wd  string // Working directory
 	tor *Torrent
 }
 
-func NewFileHandler(wd string, tor *Torrent) *FHandler {
-	return &FHandler{
+func NewFileHandler(wd string, tor *Torrent) *FileHandler {
+	return &FileHandler{
 		wd:  wd,
 		tor: tor,
 	}
 }
 
 // Piece returns the file data of given piece index.
-func (fh *FHandler) Piece(index uint64) ([]byte, error) {
+func (fh *FileHandler) Piece(index uint64) ([]byte, error) {
 
 	return nil, nil
 }
 
 // Write writes the given data to the file(s) corresponding to piece index.
-func (fh *FHandler) Write(index uint64, data []byte) error {
+func (fh *FileHandler) Write(index uint64, data []byte) error {
 
 	return nil
 }
@@ -36,13 +36,15 @@ func (fh *FHandler) Write(index uint64, data []byte) error {
 // created and set to the correct size. If a file exists, but is the wrong
 // size, empty bytes will be appended to the correct size. If all the files
 // are correct, returns true, else returns false.
-func (fh *FHandler) Validate() bool {
+func (fh *FileHandler) Validate() bool {
 
-	for _, fe := range fh.tor.files {
+	valid := true
+
+	for _, fe := range fh.tor.filelist.Files() {
 		fmt.Println(path.Join(fh.wd, fe.path))
 	}
 
-	return false
+	return valid
 }
 
 // writeEmptyFile writes an empty file of specified size.
