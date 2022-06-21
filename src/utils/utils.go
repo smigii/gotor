@@ -83,3 +83,26 @@ func Spinner(done chan bool, msg string) {
 		}
 	}
 }
+
+// SegmentData splits a byte slice into smaller byte slices of size segSize.
+// The last segment may have a smaller size than all the other segments.
+func SegmentData(data []byte, segSize uint64) [][]byte {
+	npieces := (uint64(len(data)) / segSize) + 1
+	pieces := make([][]byte, 0, npieces)
+	left := uint64(len(data))
+	idx := uint64(0)
+
+	for {
+		if left == 0 {
+			break
+		}
+		toWrite := segSize
+		if left < segSize {
+			toWrite = left
+		}
+		pieces = append(pieces, data[idx:idx+toWrite])
+		idx += toWrite
+		left -= toWrite
+	}
+	return pieces
+}

@@ -155,7 +155,12 @@ func NewTorrent(fpath string) (*Torrent, error) {
 		}
 
 		// Read through list of file dictionaries
-		tor.filelist, err = newFileList(files, &tor)
+		tfl, err := extractFileEntries(files, tor.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		tor.filelist, err = newFileList(tfl, tor.PieceLen())
 		if err != nil {
 			return nil, err
 		}
@@ -166,6 +171,57 @@ func NewTorrent(fpath string) (*Torrent, error) {
 
 // ============================================================================
 // MISC =======================================================================
+
+// extractFileEntries extracts the {path, length} dictionaries from a bencoded
+// list.
+func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, error) {
+	sfl := make([]torFileEntry, 0, 4)
+
+	for _, fEntry := range benlist {
+		fDict, ok := fEntry.(bencode.Dict)
+		if !ok {
+			return nil, &TorError{
+				msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
+			}
+		}
+
+		fLen, err := fDict.GetUint("length")
+		if err != nil {
+			return nil, err
+		}
+
+		fPathList, err := fDict.GetList("path")
+		if err != nil {
+			return nil, err
+		}
+
+		// Read through list of path strings
+		strb := strings.Builder{}
+
+		// Write the directory name
+		strb.WriteString(dirname)
+		strb.WriteByte('/')
+
+		for _, fPathEntry := range fPathList {
+			pathPiece, ok := fPathEntry.(string)
+			if !ok {
+				return nil, &TorError{
+					msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
+				}
+			}
+			strb.WriteString(pathPiece)
+			strb.WriteByte('/')
+		}
+		l := len(strb.String())
+
+		sfl = append(sfl, torFileEntry{
+			fpath:  strb.String()[:l-1], // exclude last '/'
+			length: fLen,
+		})
+	}
+
+	return sfl, nil
+}
 
 func (tor *Torrent) String() string {
 	strb := strings.Builder{}
@@ -183,7 +239,7 @@ func (tor *Torrent) String() string {
 	if tor.filelist != nil {
 		strb.WriteString("\nFiles:\n")
 		for _, p := range tor.filelist.Files() {
-			strb.WriteString(p.path)
+			strb.WriteString(p.fpath)
 			strb.WriteByte('\n')
 		}
 	}

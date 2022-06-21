@@ -1,7 +1,9 @@
 package torrent
 
 import (
+	"bytes"
 	"fmt"
+	"gotor/utils"
 	"os"
 	"strings"
 	"testing"
@@ -102,6 +104,81 @@ func TestWriteEmptyFile(t *testing.T) {
 			}
 
 			cleanUpTestFile(tt.fpath)
+		})
+	}
+}
+
+func TestPiece(t *testing.T) {
+
+	testTor := Torrent{}
+
+	type testFile struct {
+		fpath string
+		flen  uint64
+	}
+
+	// Write data to the file
+	// Create torrent
+
+	// Initialize some data
+	dataLen := uint8(100)
+	data := make([]byte, dataLen, dataLen)
+	for i, _ := range data {
+		data[i] = uint8(i)
+	}
+
+	tests := []struct {
+		name     string
+		piecelen uint64
+		files    []testFile
+	}{
+		{"Simple", 3, []testFile{
+			{"a", 5},
+			{"b", 5},
+			{"c", 5},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// Write the test files
+			curs := uint64(0) // Cursor for data byte slice
+			for _, tf := range tt.files {
+				f, e := os.OpenFile(tf.fpath, os.O_TRUNC|os.O_CREATE, 0664)
+				if e != nil {
+					cleanUpTestFile(tf.fpath)
+					t.Error(e)
+				}
+
+				_, e = f.Write(data[curs:tf.flen])
+				if e != nil {
+					cleanUpTestFile(tf.fpath)
+					t.Error(e)
+				}
+
+				curs += tf.flen
+			}
+			npieces := curs / tt.piecelen
+
+			// Create file handle
+			testTor.pieceLen = tt.piecelen
+			testTor.numPieces = npieces
+			fh := NewFileHandler(".", &testTor)
+
+			// Loop through all pieces and verify a match
+			pieces := utils.SegmentData(data[:tt.piecelen], tt.piecelen)
+			var i uint64
+			for i = 0; i < npieces; i++ {
+				expect := pieces[i]
+				got, err := fh.Piece(i)
+				if err != nil {
+					t.Error(err)
+				}
+
+				if !bytes.Equal(expect, got) {
+					t.Error("Fuck you")
+				}
+			}
 		})
 	}
 }

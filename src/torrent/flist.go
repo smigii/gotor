@@ -1,11 +1,5 @@
 package torrent
 
-import (
-	"fmt"
-	"gotor/bencode"
-	"strings"
-)
-
 // ============================================================================
 // STRUCTS ====================================================================
 
@@ -15,12 +9,19 @@ type FileList struct {
 }
 
 type FileEntry struct {
-	length        uint64
-	path          string
+	torFileEntry
 	startPieceIdx uint64 // Starting piece index
 	endPieceIdx   uint64 // Last piece index (inclusive)
 	startPieceOff uint64 // Offset from start of startPieceIdx
 	endPieceOff   uint64 // Offset from start of endPieceIdx (inclusive)
+}
+
+// torFileEntry holds only the data contained in a torrent file. This exists
+// so that we can separate extracting the data from the torrent file and
+// calculating the index/offset data.
+type torFileEntry struct {
+	length uint64
+	fpath  string
 }
 
 // ============================================================================
@@ -42,7 +43,7 @@ func (f FileEntry) Length() uint64 {
 }
 
 func (f FileEntry) Path() string {
-	return f.path
+	return f.fpath
 }
 
 func (f FileEntry) StartPiece() uint64 {
@@ -64,72 +65,37 @@ func (f FileEntry) EndPieceOff() uint64 {
 // ============================================================================
 // FUNC =======================================================================
 
-func newFileList(benlist bencode.List, tor *Torrent) (*FileList, error) {
+func newFileList(torFileEntries []torFileEntry, piecelen uint64) (*FileList, error) {
 	flist := FileList{
-		files:  make([]FileEntry, 0, len(benlist)),
+		files:  make([]FileEntry, 0, len(torFileEntries)),
 		length: 0,
 	}
 
 	index := uint64(0)  // Piece index
 	offset := uint64(0) // Offset within index
 
-	for _, fEntry := range benlist {
-		fDict, ok := fEntry.(bencode.Dict)
-		if !ok {
-			return nil, &TorError{
-				msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
-			}
-		}
-
-		fLen, err := fDict.GetUint("length")
-		if err != nil {
-			return nil, err
-		}
-		flist.length += fLen
-
-		fPathList, err := fDict.GetList("path")
-		if err != nil {
-			return nil, err
-		}
+	for _, tfe := range torFileEntries {
 
 		startPiece := index
 		startOff := offset
-		endPiece := index + ((fLen - 1) / tor.pieceLen)
-		endOff := offset + ((fLen - 1) % tor.pieceLen)
-		if endOff >= tor.pieceLen {
-			endPiece += endOff / tor.pieceLen
-			endOff %= tor.pieceLen
+		endPiece := index + ((tfe.length - 1) / piecelen)
+		endOff := offset + ((tfe.length - 1) % piecelen)
+		if endOff >= piecelen {
+			endPiece += endOff / piecelen
+			endOff %= piecelen
 		}
 
 		index = endPiece
 		offset = endOff + 1
-		if offset == tor.pieceLen {
+		if offset == piecelen {
 			index++
 			offset = 0
 		}
 
-		// Read through list of path strings
-		strb := strings.Builder{}
-
-		// Write the directory name
-		strb.WriteString(tor.name)
-		strb.WriteByte('/')
-
-		for _, fPathEntry := range fPathList {
-			pathPiece, ok := fPathEntry.(string)
-			if !ok {
-				return nil, &TorError{
-					msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
-				}
-			}
-			strb.WriteString(pathPiece)
-			strb.WriteByte('/')
-		}
-		l := len(strb.String())
+		flist.length += tfe.length
 
 		flist.files = append(flist.files, FileEntry{
-			length:        fLen,
-			path:          strb.String()[:l-1], // exclude last '/'
+			torFileEntry:  tfe,
 			startPieceIdx: startPiece,
 			endPieceIdx:   endPiece,
 			startPieceOff: startOff,

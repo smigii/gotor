@@ -44,7 +44,7 @@ func (fh *FileHandler) Validate() bool {
 	valid := true
 
 	for _, fe := range fh.tor.filelist.Files() {
-		fmt.Println(path.Join(fh.wd, fe.path))
+		fmt.Println(path.Join(fh.wd, fe.fpath))
 	}
 
 	return valid
