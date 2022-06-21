@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -105,4 +107,58 @@ func SegmentData(data []byte, segSize uint64) [][]byte {
 		left -= toWrite
 	}
 	return pieces
+}
+
+// writeSize is the number of bytes written to a file at a time
+const writeSize = 1048576
+
+// WriteEmptyFile writes an empty file of specified size.
+func WriteEmptyFile(fpath string, size uint64) error {
+
+	e := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
+	if e != nil {
+		return e
+	}
+
+	f, e := os.Create(fpath)
+	if e != nil {
+		return e
+	}
+
+	left := size
+	data := make([]byte, writeSize) // 1MiB write
+	for {
+		if left == 0 {
+			break
+		}
+		if writeSize < left {
+			_, e = f.Write(data)
+			left -= writeSize
+		} else {
+			_, e = f.Write(data[:left])
+			left = 0
+		}
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
+}
+
+// CleanUpTestFile will call os.RemoveAll on the base directory specified
+// in fpath.
+func CleanUpTestFile(fpath string) {
+	parts := strings.Split(fpath, "/")
+	if len(parts) == 0 {
+		fmt.Printf("Could not remove test file [%v]\n", fpath)
+		return
+	}
+
+	e := os.RemoveAll(parts[0]) // Clean up
+	if e == nil {
+		fmt.Printf("RemoveAll(%v) successful [input %v]\n", parts[0], fpath)
+	} else {
+		fmt.Printf("RemoveAll(%v) failed [input %v]\n", parts[0], fpath)
+	}
 }

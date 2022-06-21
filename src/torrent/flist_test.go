@@ -1,6 +1,9 @@
 package torrent
 
 import (
+	"bytes"
+	"gotor/utils"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -35,19 +38,20 @@ func TestNewFileList(t *testing.T) {
 		name      string
 		pieceLen  uint64
 		numPieces uint64
+		totalLen  uint64
 		files     []testStruct
 	}{
-		{"Single File", 32, 1, []testStruct{
+		{"Single File", 32, 1, 32, []testStruct{
 			{torFileEntry{32, "f1"}, 0, 0, 0, 31}},
 		},
-		{"Multifile Simple", 5, 5, []testStruct{
+		{"Multifile Simple", 5, 5, 25, []testStruct{
 			{torFileEntry{3, "f1"}, 0, 0, 0, 2},  // [0, 2]
 			{torFileEntry{5, "f2"}, 0, 1, 3, 2},  // [3, 7]
 			{torFileEntry{2, "f3"}, 1, 1, 3, 4},  // [8, 9]
 			{torFileEntry{13, "f4"}, 2, 4, 0, 2}, // [10, 22]
 			{torFileEntry{2, "f5"}, 4, 4, 3, 4}}, // [23, 24]
 		},
-		{"Multifile Truc", 5, 5, []testStruct{
+		{"Multifile Truc", 5, 5, 22, []testStruct{
 			{torFileEntry{5, "f1"}, 0, 0, 0, 4},  // [0, 4]
 			{torFileEntry{5, "f2"}, 1, 1, 0, 4},  // [5, 9]
 			{torFileEntry{10, "f3"}, 2, 3, 0, 4}, // [10, 19]
@@ -63,6 +67,7 @@ func TestNewFileList(t *testing.T) {
 			sfl := mkSimpleFileList(tt.files)
 			flist := newFileList(sfl, tt.pieceLen)
 
+			checkField(t, "Total Length", tt.totalLen, flist.Length())
 			for i, fe := range flist.Files() {
 				checkField(t, "Start Piece", tt.files[i].wantStartPiece, fe.StartPiece())
 				checkField(t, "End Piece", tt.files[i].wantEndPiece, fe.EndPiece())
@@ -81,7 +86,17 @@ func TestGetFiles(t *testing.T) {
 		files    []torFileEntry
 		kvp      map[uint64][]string // Map piece index to file names that should be returned
 	}{
-		{"", 3, []torFileEntry{
+		{"One Each", 3, []torFileEntry{
+			{3, "f1"},
+			{3, "f2"},
+			{3, "f3"},
+		}, map[uint64][]string{
+			0: {"f1"},
+			1: {"f2"},
+			2: {"f3"},
+			3: {},
+		}},
+		{"Mix (up to 2)", 3, []torFileEntry{
 			{4, "f1"},
 			{6, "f2"},
 			{2, "f3"},
@@ -91,6 +106,14 @@ func TestGetFiles(t *testing.T) {
 			2: {"f2"},
 			3: {"f2", "f3"},
 			4: {},
+		}},
+		{"Triple", 9, []torFileEntry{
+			{3, "f1"},
+			{3, "f2"},
+			{3, "f3"},
+		}, map[uint64][]string{
+			0: {"f1", "f2", "f3"},
+			1: {},
 		}},
 	}
 	for _, tt := range tests {
@@ -118,6 +141,83 @@ func TestGetFiles(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestPiece(t *testing.T) {
+
+	// Initialize some data
+	dataLen := uint8(100)
+	data := make([]byte, dataLen, dataLen)
+	for i, _ := range data {
+		data[i] = uint8(i)
+	}
+
+	tests := []struct {
+		name     string
+		piecelen uint64
+		files    []torFileEntry
+	}{
+		{"Tiny", 2, []torFileEntry{
+			{1, "A"},
+		}},
+		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
+		{"Simple", 3, []torFileEntry{
+			{4, "A"},
+			{6, "B"},
+			{2, "C"},
+		}},
+	}
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				for _, tf := range tt.files {
+					utils.CleanUpTestFile(tf.fpath)
+				}
+			}()
+
+			// Write the test files
+			curs := uint64(0) // Cursor for data byte slice
+			for _, tf := range tt.files {
+				f, e := os.OpenFile(tf.fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0664)
+				if e != nil {
+					t.Fatal(e)
+				}
+
+				_, e = f.Write(data[curs : curs+tf.length])
+				if e != nil {
+					t.Fatal(e)
+				}
+
+				e = f.Close()
+				if e != nil {
+					t.Fatal(e)
+				}
+
+				curs += tf.length
+			}
+
+			// Create FileList
+			fl := newFileList(tt.files, tt.piecelen)
+
+			// Loop through all pieces and verify a match
+			pieces := utils.SegmentData(data[:curs], tt.piecelen)
+			npieces := uint64(len(pieces))
+
+			var i uint64
+			for i = 0; i < npieces; i++ {
+				expect := pieces[i]
+				got, err := fl.Piece(i)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if !bytes.Equal(expect, got) {
+					t.Fatalf("Piece(%v)\nWant: %v\n Got: %v", i, expect, got)
+				}
+			}
 		})
 	}
 }

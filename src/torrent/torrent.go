@@ -63,7 +63,7 @@ func (tor *Torrent) Length() uint64 {
 	return tor.length
 }
 
-func (tor *Torrent) Files() *FileList {
+func (tor *Torrent) FileList() *FileList {
 	return tor.filelist
 }
 

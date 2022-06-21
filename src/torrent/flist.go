@@ -4,16 +4,9 @@ package torrent
 // STRUCTS ====================================================================
 
 type FileList struct {
-	files  []FileEntry
-	length uint64 // Total length of all files
-}
-
-type FileEntry struct {
-	torFileEntry
-	startPieceIdx uint64 // Starting piece index
-	endPieceIdx   uint64 // Last piece index (inclusive)
-	startPieceOff uint64 // Offset from start of startPieceIdx
-	endPieceOff   uint64 // Offset from start of endPieceIdx (inclusive)
+	files    []FileEntry
+	piecelen uint64
+	length   uint64 // Total length of all files
 }
 
 // torFileEntry holds only the data contained in a torrent file. This exists
@@ -35,40 +28,14 @@ func (fl FileList) Length() uint64 {
 	return fl.length
 }
 
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
-func (f FileEntry) Length() uint64 {
-	return f.length
-}
-
-func (f FileEntry) Path() string {
-	return f.fpath
-}
-
-func (f FileEntry) StartPiece() uint64 {
-	return f.startPieceIdx
-}
-
-func (f FileEntry) EndPiece() uint64 {
-	return f.endPieceIdx
-}
-
-func (f FileEntry) StartPieceOff() uint64 {
-	return f.startPieceOff
-}
-
-func (f FileEntry) EndPieceOff() uint64 {
-	return f.endPieceOff
-}
-
 // ============================================================================
 // FUNC =======================================================================
 
 func newFileList(torFileEntries []torFileEntry, piecelen uint64) *FileList {
 	flist := FileList{
-		files:  make([]FileEntry, 0, len(torFileEntries)),
-		length: 0,
+		files:    make([]FileEntry, 0, len(torFileEntries)),
+		piecelen: piecelen,
+		length:   0,
 	}
 
 	index := uint64(0)  // Piece index
@@ -106,7 +73,7 @@ func newFileList(torFileEntries []torFileEntry, piecelen uint64) *FileList {
 	return &flist
 }
 
-// GetFiles returns all files that are contained with the specified piece
+// GetFiles returns all files that are contained within the specified piece
 // index.
 func (fl *FileList) GetFiles(piece uint64) []FileEntry {
 
@@ -129,4 +96,40 @@ func (fl *FileList) GetFiles(piece uint64) []FileEntry {
 	}
 
 	return fl.files[startIdx : startIdx+n]
+}
+
+// Piece returns the file data of given piece index.
+func (fl *FileList) Piece(index uint64) ([]byte, error) {
+	files := fl.GetFiles(index)
+	piece := make([]byte, fl.piecelen, fl.piecelen)
+	off := uint64(0)
+
+	for _, fe := range files {
+		n, e := fe.GetPiece(piece[off:], index, fl.piecelen)
+		if e != nil {
+			// TODO: This should be handled better
+			return nil, e
+		}
+		off += n
+	}
+
+	return piece[:off], nil
+}
+
+// Write writes the given data to the file(s) corresponding to piece index.
+func (fl *FileList) Write(index uint64, data []byte) error {
+
+	return nil
+}
+
+// Validate will look through all the files specified in the torrent and check
+// the pieces and their hashes. If a file doesn't exist, the file will be
+// created and set to the correct size. If a file exists, but is the wrong
+// size, empty bytes will be appended to the correct size. If all the files
+// are correct, returns true, else returns false.
+func (fl *FileList) Validate() bool {
+
+	valid := true
+
+	return valid
 }
