@@ -160,10 +160,7 @@ func NewTorrent(fpath string) (*Torrent, error) {
 			return nil, err
 		}
 
-		tor.filelist, err = newFileList(tfl, tor.PieceLen())
-		if err != nil {
-			return nil, err
-		}
+		tor.filelist = newFileList(tfl, tor.PieceLen())
 	}
 
 	return &tor, nil

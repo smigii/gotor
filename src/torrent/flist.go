@@ -65,7 +65,7 @@ func (f FileEntry) EndPieceOff() uint64 {
 // ============================================================================
 // FUNC =======================================================================
 
-func newFileList(torFileEntries []torFileEntry, piecelen uint64) (*FileList, error) {
+func newFileList(torFileEntries []torFileEntry, piecelen uint64) *FileList {
 	flist := FileList{
 		files:  make([]FileEntry, 0, len(torFileEntries)),
 		length: 0,
@@ -103,7 +103,7 @@ func newFileList(torFileEntries []torFileEntry, piecelen uint64) (*FileList, err
 		})
 	}
 
-	return &flist, nil
+	return &flist
 }
 
 // GetFiles returns all files that are contained with the specified piece
@@ -111,27 +111,22 @@ func newFileList(torFileEntries []torFileEntry, piecelen uint64) (*FileList, err
 func (fl *FileList) GetFiles(piece uint64) []FileEntry {
 
 	hit := false
-	done := false
 	startIdx := 0
-	endIdx := 0
+	n := 0
 
 	for i, fe := range fl.Files() {
-		if hit && fe.startPieceIdx > piece {
-			endIdx = i
-			done = true
+		if fe.startPieceIdx > piece {
 			break
-		} else if !hit && fe.startPieceIdx == piece {
-			startIdx = i
-			hit = true
+		}
+
+		if fe.startPieceIdx <= piece && fe.endPieceIdx >= piece {
+			if !hit {
+				startIdx = i
+				hit = true
+			}
+			n += 1
 		}
 	}
 
-	if !hit {
-		return nil
-	} else if done {
-		return fl.files[startIdx:endIdx]
-	} else {
-		return fl.files[startIdx:]
-	}
-
+	return fl.files[startIdx : startIdx+n]
 }

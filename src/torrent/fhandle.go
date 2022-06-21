@@ -11,19 +11,25 @@ import (
 const writeSize = 1048576
 
 type FileHandler struct {
-	wd  string // Working directory
-	tor *Torrent
+	wd       string // Working directory
+	filelist *FileList
 }
 
-func NewFileHandler(wd string, tor *Torrent) *FileHandler {
+func NewFileHandler(wd string, flist *FileList) *FileHandler {
 	return &FileHandler{
-		wd:  wd,
-		tor: tor,
+		wd:       wd,
+		filelist: flist,
 	}
 }
 
 // Piece returns the file data of given piece index.
 func (fh *FileHandler) Piece(index uint64) ([]byte, error) {
+	//files := fh.filelist.GetFiles(index)
+	//strb := strings.Builder{}
+
+	//for _, fe := range files {
+	//	fe.startPieceIdx
+	//}
 
 	return nil, nil
 }
@@ -43,7 +49,7 @@ func (fh *FileHandler) Validate() bool {
 
 	valid := true
 
-	for _, fe := range fh.tor.filelist.Files() {
+	for _, fe := range fh.filelist.Files() {
 		fmt.Println(path.Join(fh.wd, fe.fpath))
 	}
 

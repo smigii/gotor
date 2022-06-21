@@ -9,22 +9,6 @@ import (
 	"testing"
 )
 
-func TestTest(t *testing.T) {
-
-	tor, e := NewTorrent("../../test/multifile.torrent")
-	if e != nil {
-		t.Error(e)
-	}
-
-	fh := NewFileHandler("~/Downloads/", tor)
-
-	fh.Validate()
-
-	x := tor.filelist.GetFiles(0)
-	fmt.Println(len(tor.filelist.Files()))
-	fmt.Println(len(x))
-}
-
 func TestValidate(t *testing.T) {
 	//type fields struct {
 	//	wd  string
@@ -163,7 +147,7 @@ func TestPiece(t *testing.T) {
 			// Create file handle
 			testTor.pieceLen = tt.piecelen
 			testTor.numPieces = npieces
-			fh := NewFileHandler(".", &testTor)
+			fh := NewFileHandler(".", testTor.Files())
 
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:tt.piecelen], tt.piecelen)
