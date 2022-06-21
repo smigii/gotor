@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 )
 
+// writeSize is the number of bytes written to a file at a time
+const writeSize = 1048576
+
 type FileHandler struct {
 	wd  string // Working directory
 	tor *Torrent
@@ -60,7 +63,6 @@ func writeEmptyFile(fpath string, size uint64) error {
 		return e
 	}
 
-	const writeSize = 1048576
 	left := size
 	data := make([]byte, writeSize) // 1MiB write
 	for {
