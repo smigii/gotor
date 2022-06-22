@@ -31,6 +31,7 @@ type Torrent struct {
 	numPieces uint64
 	length    uint64
 	filelist  *FileList
+	bitfield  *utils.Bitfield
 }
 
 // ============================================================================
@@ -161,6 +162,7 @@ func NewTorrent(fpath string) (*Torrent, error) {
 		}
 
 		tor.filelist = newFileList(tfl, tor.PieceLen())
+		// TODO: Create bitfield
 	}
 
 	return &tor, nil
@@ -218,6 +220,15 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, e
 	}
 
 	return sfl, nil
+}
+
+// mkBitfield will look through all the files specified in the torrent and check
+// the pieces and their hashes. If a file doesn't exist, the file will be
+// created and set to the correct size. If a file exists, but is the wrong
+// size, empty bytes will be appended to the correct size. Returns a bitfield
+// that represents correct/incorrect piece hashes.
+func (tor *Torrent) mkBitfield() {
+
 }
 
 func (tor *Torrent) String() string {

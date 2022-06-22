@@ -23,7 +23,7 @@ type Swarm struct {
 	Tor      *torrent.Torrent
 	Id       string
 	Port     uint16
-	Bitfield utils.Bitfield
+	Bitfield *utils.Bitfield
 }
 
 // ============================================================================

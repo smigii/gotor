@@ -121,15 +121,3 @@ func (fl *FileList) Write(index uint64, data []byte) error {
 
 	return nil
 }
-
-// Validate will look through all the files specified in the torrent and check
-// the pieces and their hashes. If a file doesn't exist, the file will be
-// created and set to the correct size. If a file exists, but is the wrong
-// size, empty bytes will be appended to the correct size. If all the files
-// are correct, returns true, else returns false.
-func (fl *FileList) Validate() bool {
-
-	valid := true
-
-	return valid
-}
