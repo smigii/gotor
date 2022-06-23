@@ -47,7 +47,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	// For now, we're just acting as a server, so fill bitfield
 	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())
 	swarm.Stats = tracker.NewStats(0, 0, 0)
-	swarm.Bitfield = utils.NewBitfield(swarm.Tor.NumPieces())
+	swarm.Bitfield = utils.NewBitfield(swarm.Tor.FileHandler().FileMeta().NumPieces())
 	swarm.Bitfield.Fill()
 
 	// Make first contact with tracker

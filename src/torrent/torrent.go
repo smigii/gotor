@@ -23,19 +23,14 @@ func (te *TorError) Error() string {
 // STRUCTS ====================================================================
 
 type Torrent struct {
-	infohash  string
-	announce  string
-	name      string
-	pieceLen  uint64
-	pieces    string
-	numPieces uint64
-	length    uint64
-	filelist  *FileList
-	bitfield  *utils.Bitfield
+	infohash string
+	announce string
+	fhandle  FileHandler
+	bitfield *utils.Bitfield
 }
 
 // ============================================================================
-// [G|S]ETTERS ================================================================
+// GETTERS ====================================================================
 
 func (tor *Torrent) Infohash() string {
 	return tor.infohash
@@ -45,38 +40,8 @@ func (tor *Torrent) Announce() string {
 	return tor.announce
 }
 
-func (tor *Torrent) Name() string {
-	return tor.name
-}
-
-func (tor *Torrent) PieceLen() uint64 {
-	return tor.pieceLen
-}
-
-func (tor *Torrent) NumPieces() uint64 {
-	return tor.numPieces
-}
-
-func (tor *Torrent) Length() uint64 {
-	if tor.filelist != nil {
-		return tor.filelist.Length()
-	}
-	return tor.length
-}
-
-func (tor *Torrent) FileList() *FileList {
-	return tor.filelist
-}
-
-func (tor *Torrent) Piece(idx uint64) (string, error) {
-	if idx >= tor.numPieces {
-		return "", &TorError{
-			msg: fmt.Sprintf("requested piece index [%v], only have [%v]", idx, tor.numPieces),
-		}
-	}
-
-	offset := idx * 20
-	return tor.pieces[offset:20], nil
+func (tor *Torrent) FileHandler() FileHandler {
+	return tor.fhandle
 }
 
 // ============================================================================
@@ -87,12 +52,12 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	tor := Torrent{}
 	var err error
 
-	fdata, err := os.ReadFile(fpath)
+	f, err := os.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := bencode.Decode(fdata)
+	d, err := bencode.Decode(f)
 	if err != nil {
 		return nil, err
 	}
@@ -114,16 +79,6 @@ func NewTorrent(fpath string) (*Torrent, error) {
 		return nil, err
 	}
 
-	tor.name, err = info.GetString("name")
-	if err != nil {
-		return nil, err
-	}
-
-	tor.pieceLen, err = info.GetUint("piece length")
-	if err != nil {
-		return nil, err
-	}
-
 	// TODO: Read info dictionary manually for SHA1
 	// This is rather wasteful
 	hasher := sha1.New()
@@ -131,38 +86,15 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	hasher.Write(enc)
 	tor.infohash = string(hasher.Sum(nil))
 
-	// Pieces
-	tor.pieces, err = info.GetString("pieces")
+	fmeta, err := newTorFileMeta(info)
 	if err != nil {
 		return nil, err
 	}
-	if len(tor.pieces)%20 != 0 {
-		return nil, &TorError{
-			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(tor.pieces)),
-		}
-	}
-	tor.numPieces = uint64(len(tor.pieces) / 20)
 
-	// Length string XOR Files dictionary
-	tor.length, err = info.GetUint("length")
-	if err != nil {
+	if fmeta.isSingle {
 
-		// Try 'files'
-		files, err := info.GetList("files")
-		if err != nil {
-			return nil, &TorError{
-				msg: fmt.Sprintf("missing keys 'length' and 'files', must have exactly 1"),
-			}
-		}
-
-		// Read through list of file dictionaries
-		tfl, err := extractFileEntries(files, tor.Name())
-		if err != nil {
-			return nil, err
-		}
-
-		tor.filelist = newFileList(tfl, tor.PieceLen())
-		// TODO: Create bitfield
+	} else {
+		tor.fhandle = newFileList(fmeta)
 	}
 
 	return &tor, nil
@@ -170,57 +102,6 @@ func NewTorrent(fpath string) (*Torrent, error) {
 
 // ============================================================================
 // MISC =======================================================================
-
-// extractFileEntries extracts the {path, length} dictionaries from a bencoded
-// list.
-func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, error) {
-	sfl := make([]torFileEntry, 0, 4)
-
-	for _, fEntry := range benlist {
-		fDict, ok := fEntry.(bencode.Dict)
-		if !ok {
-			return nil, &TorError{
-				msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
-			}
-		}
-
-		fLen, err := fDict.GetUint("length")
-		if err != nil {
-			return nil, err
-		}
-
-		fPathList, err := fDict.GetList("path")
-		if err != nil {
-			return nil, err
-		}
-
-		// Read through list of path strings
-		strb := strings.Builder{}
-
-		// Write the directory name
-		strb.WriteString(dirname)
-		strb.WriteByte('/')
-
-		for _, fPathEntry := range fPathList {
-			pathPiece, ok := fPathEntry.(string)
-			if !ok {
-				return nil, &TorError{
-					msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
-				}
-			}
-			strb.WriteString(pathPiece)
-			strb.WriteByte('/')
-		}
-		l := len(strb.String())
-
-		sfl = append(sfl, torFileEntry{
-			fpath:  strb.String()[:l-1], // exclude last '/'
-			length: fLen,
-		})
-	}
-
-	return sfl, nil
-}
 
 // mkBitfield will look through all the files specified in the torrent and check
 // the pieces and their hashes. If a file doesn't exist, the file will be
@@ -232,21 +113,22 @@ func (tor *Torrent) mkBitfield() {
 }
 
 func (tor *Torrent) String() string {
+	meta := tor.fhandle.FileMeta()
 	strb := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
 
 	strb.WriteString("Torrent Info:\n")
-	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.name))
+	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", meta.Name()))
 	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
-	plen, units := utils.Bytes4Humans(tor.pieceLen)
-	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", tor.numPieces, plen, units))
-	bsize, units := utils.Bytes4Humans(tor.Length())
+	plen, units := utils.Bytes4Humans(meta.PieceLen())
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", meta.NumPieces(), plen, units))
+	bsize, units := utils.Bytes4Humans(meta.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
-	if tor.filelist != nil {
+	if !meta.IsSingle() {
 		strb.WriteString("\nFiles:\n")
-		for _, p := range tor.filelist.Files() {
+		for _, p := range meta.Files() {
 			strb.WriteString(p.fpath)
 			strb.WriteByte('\n')
 		}

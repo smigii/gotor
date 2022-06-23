@@ -10,7 +10,7 @@ import (
 
 func TestNewFileList(t *testing.T) {
 
-	testTor := Torrent{}
+	testFileMeta := TorFileMeta{}
 
 	type testStruct struct {
 		tfe            torFileEntry
@@ -20,7 +20,7 @@ func TestNewFileList(t *testing.T) {
 		wantEndOff     uint64
 	}
 
-	mkSimpleFileList := func(structs []testStruct) []torFileEntry {
+	makeTorFileList := func(structs []testStruct) []torFileEntry {
 		l := make([]torFileEntry, 0, len(structs))
 		for _, v := range structs {
 			l = append(l, v.tfe)
@@ -61,13 +61,14 @@ func TestNewFileList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			testTor.pieceLen = tt.pieceLen
-			testTor.numPieces = tt.numPieces
+			sfl := makeTorFileList(tt.files)
+			testFileMeta.files = sfl
+			testFileMeta.pieceLen = tt.pieceLen
+			testFileMeta.numPieces = tt.numPieces
 
-			sfl := mkSimpleFileList(tt.files)
-			flist := newFileList(sfl, tt.pieceLen)
+			flist := newFileList(&testFileMeta)
 
-			checkField(t, "Total Length", tt.totalLen, flist.Length())
+			checkField(t, "Total Length", tt.totalLen, flist.FileMeta().Length())
 			for i, fe := range flist.Files() {
 				checkField(t, "Start Piece", tt.files[i].wantStartPiece, fe.StartPiece())
 				checkField(t, "End Piece", tt.files[i].wantEndPiece, fe.EndPiece())
@@ -79,6 +80,8 @@ func TestNewFileList(t *testing.T) {
 }
 
 func TestGetFiles(t *testing.T) {
+
+	testFileMeta := TorFileMeta{}
 
 	tests := []struct {
 		name     string
@@ -119,7 +122,9 @@ func TestGetFiles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			fl := newFileList(tt.files, tt.piecelen)
+			testFileMeta.files = tt.files
+			testFileMeta.pieceLen = tt.piecelen
+			fl := newFileList(&testFileMeta)
 
 			// Keys are piece indices, values are slices of file paths that
 			// should be in there
@@ -146,6 +151,8 @@ func TestGetFiles(t *testing.T) {
 }
 
 func TestPiece(t *testing.T) {
+
+	testFileMeta := TorFileMeta{}
 
 	// Initialize some data
 	dataLen := uint8(100)
@@ -200,7 +207,9 @@ func TestPiece(t *testing.T) {
 			}
 
 			// Create FileList
-			fl := newFileList(tt.files, tt.piecelen)
+			testFileMeta.files = tt.files
+			testFileMeta.pieceLen = tt.piecelen
+			fl := newFileList(&testFileMeta)
 
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:curs], tt.piecelen)
