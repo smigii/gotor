@@ -97,20 +97,14 @@ func NewTorrent(fpath string) (*Torrent, error) {
 		tor.fhandle = newFileList(fmeta)
 	}
 
+	tor.bitfield = utils.NewBitfield(tor.fhandle.FileMeta().NumPieces())
+	tor.fhandle.Validate(tor.bitfield)
+
 	return &tor, nil
 }
 
 // ============================================================================
 // MISC =======================================================================
-
-// mkBitfield will look through all the files specified in the torrent and check
-// the pieces and their hashes. If a file doesn't exist, the file will be
-// created and set to the correct size. If a file exists, but is the wrong
-// size, empty bytes will be appended to the correct size. Returns a bitfield
-// that represents correct/incorrect piece hashes.
-func (tor *Torrent) mkBitfield() {
-
-}
 
 func (tor *Torrent) String() string {
 	meta := tor.fhandle.FileMeta()

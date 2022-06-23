@@ -1,5 +1,7 @@
 package torrent
 
+import "gotor/utils"
+
 // ============================================================================
 // STRUCTS ====================================================================
 
@@ -42,6 +44,11 @@ func (fl *FileList) Piece(index uint64) ([]byte, error) {
 func (fl *FileList) Write(index uint64, data []byte) error {
 
 	return nil
+}
+
+func (fl *FileList) Validate(bf *utils.Bitfield) {
+	// Ensure all the files exist and are the right size.
+	// Since we are checking multiple files,
 }
 
 func newFileList(fmeta *TorFileMeta) *FileList {
