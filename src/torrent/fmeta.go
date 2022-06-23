@@ -2,8 +2,9 @@ package torrent
 
 import (
 	"fmt"
-	"gotor/bencode"
 	"strings"
+
+	"gotor/bencode"
 )
 
 // ============================================================================
@@ -39,7 +40,7 @@ func (t *TorFileMeta) PieceLen() uint64 {
 	return t.pieceLen
 }
 
-func (t *TorFileMeta) Pieces() string {
+func (t *TorFileMeta) PieceHashes() string {
 	return t.pieces
 }
 
@@ -115,7 +116,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 // ============================================================================
 // FUNC =======================================================================
 
-func (t *TorFileMeta) Piece(idx uint64) (string, error) {
+func (t *TorFileMeta) PieceHash(idx uint64) (string, error) {
 	if idx >= t.numPieces {
 		return "", &TorError{
 			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, t.numPieces-1),

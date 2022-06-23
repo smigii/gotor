@@ -2,9 +2,10 @@ package torrent
 
 import (
 	"fmt"
-	"gotor/utils"
 	"io"
 	"os"
+
+	"gotor/utils"
 )
 
 // ============================================================================

@@ -4,10 +4,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"gotor/bencode"
-	"gotor/utils"
 	"os"
 	"strings"
+
+	"gotor/bencode"
+	"gotor/utils"
 )
 
 // ============================================================================

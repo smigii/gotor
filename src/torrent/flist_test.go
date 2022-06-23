@@ -2,10 +2,10 @@ package torrent
 
 import (
 	"bytes"
-	"gotor/utils"
-	"os"
 	"reflect"
 	"testing"
+
+	"gotor/utils"
 )
 
 func TestNewFileList(t *testing.T) {
@@ -188,17 +188,7 @@ func TestPiece(t *testing.T) {
 			// Write the test files
 			curs := uint64(0) // Cursor for data byte slice
 			for _, tf := range tt.files {
-				f, e := os.OpenFile(tf.fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0664)
-				if e != nil {
-					t.Fatal(e)
-				}
-
-				_, e = f.Write(data[curs : curs+tf.length])
-				if e != nil {
-					t.Fatal(e)
-				}
-
-				e = f.Close()
+				e := utils.WriteTestFile(tf.fpath, data[curs:curs+tf.length])
 				if e != nil {
 					t.Fatal(e)
 				}
