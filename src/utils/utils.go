@@ -146,6 +146,25 @@ func WriteEmptyFile(fpath string, size uint64) error {
 	return nil
 }
 
+func WriteTestFile(fpath string, data []byte) error {
+	f, e := os.OpenFile(fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0666)
+	if e != nil {
+		return e
+	}
+
+	_, e = f.Write(data)
+	if e != nil {
+		return e
+	}
+
+	e = f.Close()
+	if e != nil {
+		return e
+	}
+
+	return nil
+}
+
 // CleanUpTestFile will call os.RemoveAll on the base directory specified
 // in fpath.
 func CleanUpTestFile(fpath string) {
