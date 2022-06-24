@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+
+	"gotor/utils"
 )
 
 func TestTorrent(t *testing.T) {
@@ -40,6 +42,7 @@ func TestTorrent(t *testing.T) {
 
 func testTorrent(path string, infohash string) error {
 	tor, err := NewTorrent(path)
+	defer utils.CleanUpTestFile(tor.FileHandler().FileMeta().Name())
 
 	if err != nil {
 		return err
