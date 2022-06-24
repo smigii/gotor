@@ -14,10 +14,10 @@ func TestNewFileList(t *testing.T) {
 
 	type testStruct struct {
 		tfe            torFileEntry
-		wantStartPiece uint64
-		wantEndPiece   uint64
-		wantStartOff   uint64
-		wantEndOff     uint64
+		wantStartPiece int64
+		wantEndPiece   int64
+		wantStartOff   int64
+		wantEndOff     int64
 	}
 
 	makeTorFileList := func(structs []testStruct) []torFileEntry {
@@ -28,7 +28,7 @@ func TestNewFileList(t *testing.T) {
 		return l
 	}
 
-	checkField := func(t *testing.T, name string, expect uint64, got uint64) {
+	checkField := func(t *testing.T, name string, expect int64, got int64) {
 		if expect != got {
 			t.Errorf("%v expected %v, got %v", name, expect, got)
 		}
@@ -36,9 +36,9 @@ func TestNewFileList(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		pieceLen  uint64
-		numPieces uint64
-		totalLen  uint64
+		pieceLen  int64
+		numPieces int64
+		totalLen  int64
 		files     []testStruct
 	}{
 		{"Single File", 32, 1, 32, []testStruct{
@@ -85,15 +85,15 @@ func TestGetFiles(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		piecelen uint64
+		piecelen int64
 		files    []torFileEntry
-		kvp      map[uint64][]string // Map piece index to file names that should be returned
+		kvp      map[int64][]string // Map piece index to file names that should be returned
 	}{
 		{"One Each", 3, []torFileEntry{
 			{3, "f1"},
 			{3, "f2"},
 			{3, "f3"},
-		}, map[uint64][]string{
+		}, map[int64][]string{
 			0: {"f1"},
 			1: {"f2"},
 			2: {"f3"},
@@ -103,7 +103,7 @@ func TestGetFiles(t *testing.T) {
 			{4, "f1"},
 			{6, "f2"},
 			{2, "f3"},
-		}, map[uint64][]string{
+		}, map[int64][]string{
 			0: {"f1"},
 			1: {"f1", "f2"},
 			2: {"f2"},
@@ -114,7 +114,7 @@ func TestGetFiles(t *testing.T) {
 			{3, "f1"},
 			{3, "f2"},
 			{3, "f3"},
-		}, map[uint64][]string{
+		}, map[int64][]string{
 			0: {"f1", "f2", "f3"},
 			1: {},
 		}},
@@ -163,7 +163,7 @@ func TestPiece(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		piecelen uint64
+		piecelen int64
 		files    []torFileEntry
 	}{
 		{"Tiny", 2, []torFileEntry{
@@ -186,7 +186,7 @@ func TestPiece(t *testing.T) {
 			}()
 
 			// Write the test files
-			curs := uint64(0) // Cursor for data byte slice
+			curs := int64(0) // Cursor for data byte slice
 			for _, tf := range tt.files {
 				e := utils.WriteTestFile(tf.fpath, data[curs:curs+tf.length])
 				if e != nil {
@@ -203,9 +203,9 @@ func TestPiece(t *testing.T) {
 
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:curs], tt.piecelen)
-			npieces := uint64(len(pieces))
+			npieces := int64(len(pieces))
 
-			var i uint64
+			var i int64
 			for i = 0; i < npieces; i++ {
 				expect := pieces[i]
 				got, err := fl.Piece(i)

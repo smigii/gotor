@@ -3,7 +3,6 @@ package torrent
 import (
 	"fmt"
 	"io"
-	"math"
 	"os"
 )
 
@@ -12,16 +11,16 @@ import (
 
 type FileEntry struct {
 	torFileEntry
-	startPieceIdx uint64 // Starting piece index
-	endPieceIdx   uint64 // Last piece index (inclusive)
-	startPieceOff uint64 // Offset from start of startPieceIdx
-	endPieceOff   uint64 // Offset from start of endPieceIdx (inclusive)
+	startPieceIdx int64 // Starting piece index
+	endPieceIdx   int64 // Last piece index (inclusive)
+	startPieceOff int64 // Offset from start of startPieceIdx
+	endPieceOff   int64 // Offset from start of endPieceIdx (inclusive)
 }
 
 // ============================================================================
 // GETTERS ====================================================================
 
-func (fe FileEntry) Length() uint64 {
+func (fe FileEntry) Length() int64 {
 	return fe.length
 }
 
@@ -29,19 +28,19 @@ func (fe FileEntry) Path() string {
 	return fe.fpath
 }
 
-func (fe FileEntry) StartPiece() uint64 {
+func (fe FileEntry) StartPiece() int64 {
 	return fe.startPieceIdx
 }
 
-func (fe FileEntry) EndPiece() uint64 {
+func (fe FileEntry) EndPiece() int64 {
 	return fe.endPieceIdx
 }
 
-func (fe FileEntry) StartPieceOff() uint64 {
+func (fe FileEntry) StartPieceOff() int64 {
 	return fe.startPieceOff
 }
 
-func (fe FileEntry) EndPieceOff() uint64 {
+func (fe FileEntry) EndPieceOff() int64 {
 	return fe.endPieceOff
 }
 
@@ -50,7 +49,7 @@ func (fe FileEntry) EndPieceOff() uint64 {
 
 // GetPiece writes the file data of the specified piece index to the dst byte
 // slice.
-func (fe *FileEntry) GetPiece(dst []byte, index uint64, pieceLen uint64) (uint64, error) {
+func (fe *FileEntry) GetPiece(dst []byte, index int64, pieceLen int64) (int64, error) {
 	/*
 
 		Consider the following,
@@ -81,8 +80,8 @@ func (fe *FileEntry) GetPiece(dst []byte, index uint64, pieceLen uint64) (uint64
 		return 0, fmt.Errorf("index %v out of range", index)
 	}
 
-	seekAmnt := uint64(0)
-	readAmnt := uint64(0)
+	seekAmnt := int64(0)
+	readAmnt := int64(0)
 
 	cursorIdx := fe.startPieceIdx
 	cursorOff := fe.startPieceOff
@@ -107,8 +106,8 @@ func (fe *FileEntry) GetPiece(dst []byte, index uint64, pieceLen uint64) (uint64
 		readAmnt = fe.endPieceOff + 1
 	}
 
-	if uint64(len(dst)) < readAmnt {
-		readAmnt = uint64(len(dst))
+	if int64(len(dst)) < readAmnt {
+		readAmnt = int64(len(dst))
 	}
 
 	f, e := os.Open(fe.fpath)
@@ -116,29 +115,17 @@ func (fe *FileEntry) GetPiece(dst []byte, index uint64, pieceLen uint64) (uint64
 		return 0, e
 	}
 
-	// Probably overkill
-	const maxSeek = uint64(math.MaxInt64)
-	for {
-		if seekAmnt == 0 {
-			break
-		} else if seekAmnt > maxSeek {
-			_, e = f.Seek(math.MaxInt64, io.SeekCurrent)
-			seekAmnt -= maxSeek
-		} else {
-			_, e = f.Seek(int64(seekAmnt), io.SeekCurrent)
-			seekAmnt -= seekAmnt
-		}
-		if e != nil {
-			return 0, e
-		}
+	_, e = f.Seek(int64(seekAmnt), io.SeekStart)
+	if e != nil {
+		return 0, e
 	}
 
 	n, e := f.Read(dst[:readAmnt])
 	if e != nil {
 		return 0, e
 	}
-	if uint64(n) != readAmnt {
-		return uint64(n), fmt.Errorf("only read %v bytes, should have read %v", n, readAmnt)
+	if int64(n) != readAmnt {
+		return int64(n), fmt.Errorf("only read %v bytes, should have read %v", n, readAmnt)
 	}
 
 	e = f.Close()

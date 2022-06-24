@@ -13,10 +13,10 @@ import (
 // TorFileMeta holds the relevent metadata of the files in torrent.
 type TorFileMeta struct {
 	name      string
-	pieceLen  uint64
+	pieceLen  int64
 	pieces    string
-	numPieces uint64
-	length    uint64
+	numPieces int64
+	length    int64
 	files     []torFileEntry
 	isSingle  bool // Is this a single-file or multi-file torrent?
 }
@@ -25,7 +25,7 @@ type TorFileMeta struct {
 // This exists to facilitate testing; rather than passing in a bencode.List to
 // testing setup, we can pass these instead.
 type torFileEntry struct {
-	length uint64
+	length int64
 	fpath  string
 }
 
@@ -36,7 +36,7 @@ func (t *TorFileMeta) Name() string {
 	return t.name
 }
 
-func (t *TorFileMeta) PieceLen() uint64 {
+func (t *TorFileMeta) PieceLen() int64 {
 	return t.pieceLen
 }
 
@@ -44,11 +44,11 @@ func (t *TorFileMeta) PieceHashes() string {
 	return t.pieces
 }
 
-func (t *TorFileMeta) NumPieces() uint64 {
+func (t *TorFileMeta) NumPieces() int64 {
 	return t.numPieces
 }
 
-func (t *TorFileMeta) Length() uint64 {
+func (t *TorFileMeta) Length() int64 {
 	return t.length
 }
 
@@ -72,7 +72,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 		return nil, err
 	}
 
-	fdata.pieceLen, err = info.GetUint("piece length")
+	fdata.pieceLen, err = info.GetInt("piece length")
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(fdata.pieces)),
 		}
 	}
-	fdata.numPieces = uint64(len(fdata.pieces) / 20)
+	fdata.numPieces = int64(len(fdata.pieces) / 20)
 
-	fdata.length, err = info.GetUint("length")
+	fdata.length, err = info.GetInt("length")
 	if err == nil {
 		fdata.isSingle = true
 		// TODO: Finish
@@ -116,7 +116,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 // ============================================================================
 // FUNC =======================================================================
 
-func (t *TorFileMeta) PieceHash(idx uint64) (string, error) {
+func (t *TorFileMeta) PieceHash(idx int64) (string, error) {
 	if idx >= t.numPieces {
 		return "", &TorError{
 			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, t.numPieces-1),
@@ -140,7 +140,7 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, e
 			}
 		}
 
-		fLen, err := fDict.GetUint("length")
+		fLen, err := fDict.GetInt("length")
 		if err != nil {
 			return nil, err
 		}

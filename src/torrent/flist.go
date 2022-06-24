@@ -24,10 +24,10 @@ func (fl FileList) FileMeta() *TorFileMeta {
 // ============================================================================
 // FUNC =======================================================================
 
-func (fl *FileList) Piece(index uint64) ([]byte, error) {
+func (fl *FileList) Piece(index int64) ([]byte, error) {
 	files := fl.GetFiles(index)
 	piece := make([]byte, fl.fmeta.pieceLen, fl.fmeta.pieceLen)
-	off := uint64(0)
+	off := int64(0)
 
 	for _, fe := range files {
 		n, e := fe.GetPiece(piece[off:], index, fl.fmeta.pieceLen)
@@ -41,7 +41,7 @@ func (fl *FileList) Piece(index uint64) ([]byte, error) {
 	return piece[:off], nil
 }
 
-func (fl *FileList) Write(index uint64, data []byte) error {
+func (fl *FileList) Write(index int64, data []byte) error {
 
 	return nil
 }
@@ -61,8 +61,8 @@ func newFileList(fmeta *TorFileMeta) *FileList {
 	// shouldn't have a "length" key in their info dictionary
 	fmeta.length = 0
 
-	index := uint64(0)  // Piece index
-	offset := uint64(0) // Offset within index
+	index := int64(0)  // Piece index
+	offset := int64(0) // Offset within index
 
 	for _, tfe := range fmeta.files {
 
@@ -98,7 +98,7 @@ func newFileList(fmeta *TorFileMeta) *FileList {
 
 // GetFiles returns all files that are contained within the specified piece
 // index.
-func (fl *FileList) GetFiles(piece uint64) []FileEntry {
+func (fl *FileList) GetFiles(piece int64) []FileEntry {
 
 	hit := false
 	startIdx := 0

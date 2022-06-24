@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -47,7 +46,7 @@ func randStringBytesMaskImprSrcSB(n int) string {
 
 // Bytes4Humans Turns a number of bytes into human-readable number and units.
 // Returns the converted number and string representing units
-func Bytes4Humans(nbytes uint64) (float64, string) {
+func Bytes4Humans(nbytes int64) (float64, string) {
 	asfloat := float64(nbytes)
 	const unit = 1024
 
@@ -88,11 +87,11 @@ func Spinner(done chan bool, msg string) {
 
 // SegmentData splits a byte slice into smaller byte slices of size segSize.
 // The last segment may have a smaller size than all the other segments.
-func SegmentData(data []byte, segSize uint64) [][]byte {
-	npieces := (uint64(len(data)) / segSize) + 1
+func SegmentData(data []byte, segSize int64) [][]byte {
+	npieces := (int64(len(data)) / segSize) + 1
 	pieces := make([][]byte, 0, npieces)
-	left := uint64(len(data))
-	idx := uint64(0)
+	left := int64(len(data))
+	idx := int64(0)
 
 	for {
 		if left == 0 {
@@ -107,43 +106,6 @@ func SegmentData(data []byte, segSize uint64) [][]byte {
 		left -= toWrite
 	}
 	return pieces
-}
-
-// writeSize is the number of bytes written to a file at a time
-const writeSize = 1048576
-
-// WriteEmptyFile writes an empty file of specified size.
-func WriteEmptyFile(fpath string, size uint64) error {
-
-	e := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
-	if e != nil {
-		return e
-	}
-
-	f, e := os.Create(fpath)
-	if e != nil {
-		return e
-	}
-
-	left := size
-	data := make([]byte, writeSize) // 1MiB write
-	for {
-		if left == 0 {
-			break
-		}
-		if writeSize < left {
-			_, e = f.Write(data)
-			left -= writeSize
-		} else {
-			_, e = f.Write(data[:left])
-			left = 0
-		}
-		if e != nil {
-			return e
-		}
-	}
-
-	return nil
 }
 
 func WriteTestFile(fpath string, data []byte) error {

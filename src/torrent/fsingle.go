@@ -1,8 +1,8 @@
 package torrent
 
 import (
+	"crypto/sha1"
 	"fmt"
-	"io"
 	"os"
 
 	"gotor/utils"
@@ -16,22 +16,28 @@ import (
 // int a given piece.
 type FileSingle struct {
 	meta *TorFileMeta
+	fp   *os.File
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func newFileSingle(meta *TorFileMeta) *FileSingle {
-	return &FileSingle{
-		meta: meta,
+func newFileSingle(meta *TorFileMeta) (*FileSingle, error) {
+	fp, err := utils.OpenCheck(meta.name, int64(meta.length))
+	if err != nil {
+		return nil, err
+	} else {
+		return &FileSingle{
+			meta: meta,
+			fp:   fp,
+		}, nil
 	}
 }
 
 // ============================================================================
 // IMPL =======================================================================
 
-func (f *FileSingle) Piece(index uint64) ([]byte, error) {
-
+func (f *FileSingle) Piece(index int64) ([]byte, error) {
 	meta := f.meta
 
 	if index >= meta.numPieces {
@@ -48,28 +54,28 @@ func (f *FileSingle) Piece(index uint64) ([]byte, error) {
 	}
 
 	buf := make([]byte, readAmnt, readAmnt)
-
-	fp, e := os.Open(f.meta.name)
-	if e != nil {
-		panic(e)
-	}
-
-	_, e = fp.Seek(int64(seekAmnt), io.SeekStart)
-	if e != nil {
-		panic(e)
-	}
-
-	_, e = fp.Read(buf)
-	if e != nil {
-		panic(e)
-	}
-
-	return buf, nil
+	_, e := f.fp.ReadAt(buf, int64(seekAmnt))
+	return buf, e
 }
 
-func (f *FileSingle) Write(index uint64, data []byte) error {
-	//TODO implement me
-	panic("implement me")
+func (f *FileSingle) Write(index int64, data []byte) error {
+	meta := f.meta
+	if index >= meta.numPieces {
+		return fmt.Errorf("index out of bounds, got %v, max %v", index, meta.numPieces)
+	}
+
+	hasher := sha1.New()
+	hasher.Write(data)
+	hash := string(hasher.Sum(nil))
+	wantHash, _ := meta.PieceHash(index)
+
+	if hash != wantHash {
+		return &HashError{}
+	}
+
+	seekAmnt := index * meta.pieceLen
+	_, e := f.fp.WriteAt(data, int64(seekAmnt))
+	return e
 }
 
 func (f *FileSingle) FileMeta() *TorFileMeta {

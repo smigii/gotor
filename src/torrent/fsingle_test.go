@@ -2,8 +2,9 @@ package torrent
 
 import (
 	"bytes"
-	"gotor/utils"
 	"testing"
+
+	"gotor/utils"
 )
 
 func TestFileSingle_Piece(t *testing.T) {
@@ -14,7 +15,7 @@ func TestFileSingle_Piece(t *testing.T) {
 	tests := []struct {
 		name     string
 		fpath    string
-		piecelen uint64
+		piecelen int64
 		data     []byte
 	}{
 		{"No trunc piece", "f1", 3, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
@@ -28,18 +29,21 @@ func TestFileSingle_Piece(t *testing.T) {
 
 			testMeta.pieceLen = tt.piecelen
 			testMeta.name = tt.fpath
-			testMeta.numPieces = uint64(len(pieces))
-			testMeta.length = uint64(len(tt.data))
+			testMeta.numPieces = int64(len(pieces))
+			testMeta.length = int64(len(tt.data))
 
 			e := utils.WriteTestFile(tt.fpath, tt.data)
 			if e != nil {
 				t.Fatal(e)
 			}
 
-			f := newFileSingle(&testMeta)
+			f, e := newFileSingle(&testMeta)
+			if e != nil {
+				t.Error(e)
+			}
 
 			for i := 0; i < len(pieces); i++ {
-				got, err := f.Piece(uint64(i))
+				got, err := f.Piece(int64(i))
 				if err != nil {
 					t.Error(e)
 				}

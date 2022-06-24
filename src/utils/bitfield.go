@@ -4,11 +4,11 @@ import "fmt"
 
 type Bitfield struct {
 	data  []byte
-	nbits uint64
-	nset  uint64
+	nbits int64
+	nset  int64
 }
 
-func NewBitfield(nbits uint64) *Bitfield {
+func NewBitfield(nbits int64) *Bitfield {
 	nbytes := nbits / 8
 	if nbits%8 != 0 {
 		nbytes += 1
@@ -23,9 +23,9 @@ func NewBitfield(nbits uint64) *Bitfield {
 	return &bf
 }
 
-func FromBytes(bytes []byte, nbits uint64) (*Bitfield, error) {
-	min := uint64((len(bytes)-1)*8) + 1
-	max := uint64(len(bytes) * 8)
+func FromBytes(bytes []byte, nbits int64) (*Bitfield, error) {
+	min := int64((len(bytes)-1)*8) + 1
+	max := int64(len(bytes) * 8)
 	if nbits < min || nbits > max {
 		return nil, fmt.Errorf("invalid number of bits specified for byte slice of len %v\nmin %v, max %v, given %v", len(bytes), min, max, nbits)
 	}
@@ -43,11 +43,11 @@ func FromBytes(bytes []byte, nbits uint64) (*Bitfield, error) {
 // calcNset goes through all the bytes and counts how many bits are set.
 // Overwrites Bitfield.nset accordingly.
 func (bf *Bitfield) calcNset() {
-	var i uint64
+	var i int64
 	const maskStart = uint8(128)
-	nbytes := uint64(len(bf.data))
+	nbytes := int64(len(bf.data))
 	rem := bf.nbits % 8
-	nset := uint64(0)
+	nset := int64(0)
 
 	// If nbits is multiple of 8, we can just read through
 	// all the bytes.
@@ -84,7 +84,7 @@ func (bf *Bitfield) Fill() {
 	bf.nset = bf.nbits
 }
 
-func (bf *Bitfield) Get(idx uint64) bool {
+func (bf *Bitfield) Get(idx int64) bool {
 	maj := idx / 8
 	min := idx % 8
 	mask := uint8(128) >> min
@@ -93,7 +93,7 @@ func (bf *Bitfield) Get(idx uint64) bool {
 	return (elem & mask) > 0
 }
 
-func (bf *Bitfield) Set(idx uint64, val bool) {
+func (bf *Bitfield) Set(idx int64, val bool) {
 	maj := idx / 8
 	min := idx % 8
 	getMask := uint8(128) >> min

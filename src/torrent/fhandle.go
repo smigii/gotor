@@ -9,12 +9,18 @@ This will slow us down a lot, we should implement a batching system to
 reduce the number of IO requests.
 ============================================================================ */
 
+type HashError struct{}
+
+func (he *HashError) Error() string {
+	return "bad data hash"
+}
+
 type FileHandler interface {
 	// Piece returns the file data at the given piece index.
-	Piece(index uint64) ([]byte, error)
+	Piece(index int64) ([]byte, error)
 
 	// Write writes the given data to the file(s) corresponding to piece index.
-	Write(index uint64, data []byte) error
+	Write(index int64, data []byte) error
 
 	// FileMeta returns the metadata for the files in the torrent.
 	FileMeta() *TorFileMeta

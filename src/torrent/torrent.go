@@ -93,7 +93,10 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	}
 
 	if fmeta.isSingle {
-		tor.fhandle = newFileSingle(fmeta)
+		tor.fhandle, err = newFileSingle(fmeta)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		tor.fhandle = newFileList(fmeta)
 	}

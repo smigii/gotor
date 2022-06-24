@@ -9,8 +9,8 @@ func TestFromBytes(t *testing.T) {
 	tests := []struct {
 		name  string
 		data  []byte
-		nbits uint64
-		nset  uint64
+		nbits int64
+		nset  int64
 		err   bool
 	}{
 		{"1 byte 8 bit", []byte{0x0A}, 8, 2, false},
@@ -52,7 +52,7 @@ func TestGet(t *testing.T) {
 	}
 
 	tests := []struct {
-		idx  uint64
+		idx  int64
 		want bool
 	}{
 		{0, true},
@@ -80,7 +80,7 @@ func TestSet(t *testing.T) {
 	}
 
 	tests := []struct {
-		idx   uint64
+		idx   int64
 		to    bool
 		delta int // Change to Bitfield.nset
 	}{
