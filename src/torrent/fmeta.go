@@ -124,7 +124,7 @@ func (t *TorFileMeta) PieceHash(idx int64) (string, error) {
 	}
 
 	offset := idx * 20
-	return t.pieces[offset:20], nil
+	return t.pieces[offset : offset+20], nil
 }
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded

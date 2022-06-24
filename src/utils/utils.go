@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"math/rand"
 	"os"
@@ -106,6 +107,12 @@ func SegmentData(data []byte, segSize int64) [][]byte {
 		left -= toWrite
 	}
 	return pieces
+}
+
+func SHA1(data []byte) string {
+	hasher := sha1.New()
+	hasher.Write(data)
+	return string(hasher.Sum(nil))
 }
 
 func WriteTestFile(fpath string, data []byte) error {
