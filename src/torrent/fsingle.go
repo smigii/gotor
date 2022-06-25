@@ -1,7 +1,6 @@
 package torrent
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"os"
 
@@ -13,24 +12,28 @@ import (
 
 // FileSingle is used for single-file torrents. It can access pieces faster
 // than FileList since it doesn't need to find out which files are contained
-// int a given piece.
+// in a given piece.
 type FileSingle struct {
 	meta *TorFileMeta
 	fp   *os.File
+	bf   *utils.Bitfield
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
 func newFileSingle(meta *TorFileMeta) (*FileSingle, error) {
-	fp, err := utils.OpenCheck(meta.name, int64(meta.length))
+	fp, err := utils.OpenCheck(meta.name, meta.length)
 	if err != nil {
 		return nil, err
 	} else {
-		return &FileSingle{
+		fs := FileSingle{
 			meta: meta,
 			fp:   fp,
-		}, nil
+			bf:   utils.NewBitfield(meta.NumPieces()),
+		}
+		//err = fs.Validate()  // broken
+		return &fs, err
 	}
 }
 
@@ -54,7 +57,9 @@ func (f *FileSingle) Piece(index int64) ([]byte, error) {
 	}
 
 	buf := make([]byte, readAmnt, readAmnt)
-	_, e := f.fp.ReadAt(buf, int64(seekAmnt))
+
+	_, e := f.fp.ReadAt(buf, seekAmnt)
+
 	return buf, e
 }
 
@@ -64,24 +69,47 @@ func (f *FileSingle) Write(index int64, data []byte) error {
 		return fmt.Errorf("index out of bounds, got %v, max %v", index, meta.numPieces)
 	}
 
-	hasher := sha1.New()
-	hasher.Write(data)
-	hash := string(hasher.Sum(nil))
-	wantHash, _ := meta.PieceHash(index)
+	hash := utils.SHA1(data)
+	knownHash, _ := meta.PieceHash(index)
 
-	if hash != wantHash {
+	if hash != knownHash {
 		return &HashError{}
 	}
 
 	seekAmnt := index * meta.pieceLen
-	_, e := f.fp.WriteAt(data, int64(seekAmnt))
+
+	_, e := f.fp.WriteAt(data, seekAmnt)
+
 	return e
+}
+
+func (f *FileSingle) Validate() error {
+	var i int64
+
+	for i = 0; i < f.meta.numPieces; i++ {
+
+		knownHash, e := f.meta.PieceHash(i)
+		if e != nil {
+			return e
+		}
+
+		// TODO: Grabbing pieces one at a time is slow
+		piece, e := f.Piece(i)
+		if e != nil {
+			return e
+		}
+
+		val := utils.SHA1(piece) == knownHash
+		f.bf.Set(i, val)
+	}
+
+	return nil
 }
 
 func (f *FileSingle) FileMeta() *TorFileMeta {
 	return f.meta
 }
 
-func (f *FileSingle) Validate(bf *utils.Bitfield) {
-	//TODO implement me
+func (f *FileSingle) Bitfield() *utils.Bitfield {
+	return f.bf
 }

@@ -8,6 +8,7 @@ import "gotor/utils"
 type FileList struct {
 	files []FileEntry
 	fmeta *TorFileMeta
+	bf    *utils.Bitfield
 }
 
 // ============================================================================
@@ -19,6 +20,10 @@ func (fl FileList) Files() []FileEntry {
 
 func (fl FileList) FileMeta() *TorFileMeta {
 	return fl.fmeta
+}
+
+func (fl *FileList) Bitfield() *utils.Bitfield {
+	return fl.bf
 }
 
 // ============================================================================
@@ -46,9 +51,9 @@ func (fl *FileList) Write(index int64, data []byte) error {
 	return nil
 }
 
-func (fl *FileList) Validate(bf *utils.Bitfield) {
-	// Ensure all the files exist and are the right size.
-	// Since we are checking multiple files,
+func (fl *FileList) Validate() error {
+
+	return nil
 }
 
 func newFileList(fmeta *TorFileMeta) *FileList {

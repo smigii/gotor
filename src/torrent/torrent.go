@@ -27,7 +27,6 @@ type Torrent struct {
 	infohash string
 	announce string
 	fhandle  FileHandler
-	bitfield *utils.Bitfield
 }
 
 // ============================================================================
@@ -100,9 +99,6 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	} else {
 		tor.fhandle = newFileList(fmeta)
 	}
-
-	tor.bitfield = utils.NewBitfield(fmeta.NumPieces())
-	tor.fhandle.Validate(tor.bitfield)
 
 	return &tor, nil
 }

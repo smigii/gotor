@@ -25,10 +25,9 @@ type FileHandler interface {
 	// FileMeta returns the metadata for the files in the torrent.
 	FileMeta() *TorFileMeta
 
-	// Validate will look through the file(s) specified in the torrent and check
-	// the pieces and their hashes. If a file doesn't exist, the file will be
-	// created and set to the correct size. If a file exists, but is the wrong
-	// size, empty bytes will be appended to the correct size. It will overwrite
-	// the provided bitfield.
-	Validate(bf *utils.Bitfield)
+	// Validate will look through the file(s) specified in the torrent and
+	// check the pieces and their hashes, updating the results in its bitfield.
+	Validate() error
+
+	Bitfield() *utils.Bitfield
 }
