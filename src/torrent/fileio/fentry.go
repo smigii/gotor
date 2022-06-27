@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import (
 	"fmt"
@@ -9,8 +9,19 @@ import (
 // ============================================================================
 // STRUCTS ====================================================================
 
+// FileEntry holds only the data contained in a torrent's info dictionary.
+// This exists to facilitate testing; rather than passing in a bencode.List to
+// testing setup, we can pass these instead.
 type FileEntry struct {
-	torFileEntry
+	length int64
+	fpath  string
+}
+
+// FileEntryWrapper wraps the FileEntry struct with the starting and ending
+// indices and byte-offsets for a file. This is used by FileList structs to
+// find which files are related to which pieces.
+type FileEntryWrapper struct {
+	FileEntry
 	startPieceIdx int64 // Starting piece index
 	endPieceIdx   int64 // Last piece index (inclusive)
 	startPieceOff int64 // Offset from start of startPieceIdx
@@ -20,28 +31,30 @@ type FileEntry struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (fe FileEntry) Length() int64 {
+func (fe *FileEntry) Length() int64 {
 	return fe.length
 }
 
-func (fe FileEntry) Path() string {
+func (fe *FileEntry) Path() string {
 	return fe.fpath
 }
 
-func (fe FileEntry) StartPiece() int64 {
-	return fe.startPieceIdx
+// ----------------------------------------------------------------------------
+
+func (few *FileEntryWrapper) StartPiece() int64 {
+	return few.startPieceIdx
 }
 
-func (fe FileEntry) EndPiece() int64 {
-	return fe.endPieceIdx
+func (few *FileEntryWrapper) EndPiece() int64 {
+	return few.endPieceIdx
 }
 
-func (fe FileEntry) StartPieceOff() int64 {
-	return fe.startPieceOff
+func (few *FileEntryWrapper) StartPieceOff() int64 {
+	return few.startPieceOff
 }
 
-func (fe FileEntry) EndPieceOff() int64 {
-	return fe.endPieceOff
+func (few *FileEntryWrapper) EndPieceOff() int64 {
+	return few.endPieceOff
 }
 
 // ============================================================================
@@ -49,7 +62,7 @@ func (fe FileEntry) EndPieceOff() int64 {
 
 // GetPiece writes the file data of the specified piece index to the dst byte
 // slice.
-func (fe *FileEntry) GetPiece(dst []byte, index int64, pieceLen int64) (int64, error) {
+func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (int64, error) {
 	/*
 
 		Consider the following,
@@ -76,15 +89,15 @@ func (fe *FileEntry) GetPiece(dst []byte, index int64, pieceLen int64) (int64, e
 
 	*/
 
-	if index < fe.startPieceIdx || index > fe.endPieceIdx {
+	if index < few.startPieceIdx || index > few.endPieceIdx {
 		return 0, fmt.Errorf("index %v out of range", index)
 	}
 
 	seekAmnt := int64(0)
 	readAmnt := int64(0)
 
-	cursorIdx := fe.startPieceIdx
-	cursorOff := fe.startPieceOff
+	cursorIdx := few.startPieceIdx
+	cursorOff := few.startPieceOff
 
 	// Adjust seekAmnt
 	for {
@@ -98,19 +111,19 @@ func (fe *FileEntry) GetPiece(dst []byte, index int64, pieceLen int64) (int64, e
 	}
 
 	// Adjust readAmnt
-	if index < fe.endPieceIdx {
+	if index < few.endPieceIdx {
 		// We can just write pieceLen bytes, as the file contains more pieces.
 		readAmnt = pieceLen
 	} else {
 		// The remainder of the piece is in a later file.
-		readAmnt = fe.endPieceOff + 1
+		readAmnt = few.endPieceOff + 1
 	}
 
 	if int64(len(dst)) < readAmnt {
 		readAmnt = int64(len(dst))
 	}
 
-	f, e := os.Open(fe.fpath)
+	f, e := os.Open(few.fpath)
 	if e != nil {
 		return 0, e
 	}

@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import "gotor/utils"
 
@@ -6,7 +6,7 @@ import "gotor/utils"
 // STRUCTS ====================================================================
 
 type FileList struct {
-	files []FileEntry
+	files []FileEntryWrapper
 	fmeta *TorFileMeta
 	bf    *utils.Bitfield
 }
@@ -14,7 +14,7 @@ type FileList struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (fl FileList) Files() []FileEntry {
+func (fl FileList) Files() []FileEntryWrapper {
 	return fl.files
 }
 
@@ -60,9 +60,9 @@ func (fl *FileList) Close() error {
 	return nil
 }
 
-func newFileList(fmeta *TorFileMeta) *FileList {
+func NewFileList(fmeta *TorFileMeta) *FileList {
 	flist := FileList{
-		files: make([]FileEntry, 0, len(fmeta.files)),
+		files: make([]FileEntryWrapper, 0, len(fmeta.files)),
 		fmeta: fmeta,
 	}
 
@@ -93,8 +93,8 @@ func newFileList(fmeta *TorFileMeta) *FileList {
 
 		flist.fmeta.length += tfe.length
 
-		flist.files = append(flist.files, FileEntry{
-			torFileEntry:  tfe,
+		flist.files = append(flist.files, FileEntryWrapper{
+			FileEntry:     tfe,
 			startPieceIdx: startPiece,
 			endPieceIdx:   endPiece,
 			startPieceOff: startOff,
@@ -107,7 +107,7 @@ func newFileList(fmeta *TorFileMeta) *FileList {
 
 // GetFiles returns all files that are contained within the specified piece
 // index.
-func (fl *FileList) GetFiles(piece int64) []FileEntry {
+func (fl *FileList) GetFiles(piece int64) []FileEntryWrapper {
 
 	hit := false
 	startIdx := 0

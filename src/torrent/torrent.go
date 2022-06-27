@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"gotor/torrent/fileio"
 	"os"
 	"strings"
 
@@ -26,7 +27,7 @@ func (te *TorError) Error() string {
 type Torrent struct {
 	infohash string
 	announce string
-	fhandle  FileHandler
+	fhandle  fileio.FileHandler
 }
 
 // ============================================================================
@@ -40,7 +41,7 @@ func (tor *Torrent) Announce() string {
 	return tor.announce
 }
 
-func (tor *Torrent) FileHandler() FileHandler {
+func (tor *Torrent) FileHandler() fileio.FileHandler {
 	return tor.fhandle
 }
 
@@ -86,18 +87,18 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	hasher.Write(enc)
 	tor.infohash = string(hasher.Sum(nil))
 
-	fmeta, err := newTorFileMeta(info)
+	fmeta, err := fileio.NewFileMeta(info)
 	if err != nil {
 		return nil, err
 	}
 
-	if fmeta.isSingle {
-		tor.fhandle, err = newFileSingle(fmeta)
+	if fmeta.IsSingle() {
+		tor.fhandle, err = fileio.NewFileSingle(fmeta)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		tor.fhandle = newFileList(fmeta)
+		tor.fhandle = fileio.NewFileList(fmeta)
 	}
 
 	return &tor, nil
@@ -122,8 +123,8 @@ func (tor *Torrent) String() string {
 
 	if !meta.IsSingle() {
 		strb.WriteString("\nFiles:\n")
-		for _, p := range meta.Files() {
-			strb.WriteString(p.fpath)
+		for _, fe := range meta.Files() {
+			strb.WriteString(fe.Path())
 			strb.WriteByte('\n')
 		}
 	}

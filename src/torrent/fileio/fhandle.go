@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import "gotor/utils"
 

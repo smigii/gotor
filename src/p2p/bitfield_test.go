@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"gotor/utils"
 	"testing"
 )
 
@@ -35,9 +36,7 @@ func TestBitfieldDecode(t *testing.T) {
 					t.Error("expected error")
 				}
 			} else {
-				if err != nil {
-					t.Error(err)
-				}
+				utils.CheckError(t, err)
 				bfmsg, ok := msg.(*MsgBitfield)
 				if !ok {
 					t.Error("couldn't convert to MsgBitfield")
@@ -67,9 +66,7 @@ func TestBitfieldEncode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			want := append(tt.base, tt.bf...)
 			msg, err := DecodeMsgBitfield(tt.bf, uint32(len(tt.bf))+1)
-			if err != nil {
-				t.Error(err)
-			}
+			utils.CheckError(t, err)
 			enc := msg.Encode()
 			if !bytes.Equal(want, enc) {
 				t.Errorf("\nwant %v\n got %v", want, enc)

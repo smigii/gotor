@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import (
 	"bytes"
@@ -13,15 +13,15 @@ func TestNewFileList(t *testing.T) {
 	testFileMeta := TorFileMeta{}
 
 	type testStruct struct {
-		tfe            torFileEntry
+		tfe            FileEntry
 		wantStartPiece int64
 		wantEndPiece   int64
 		wantStartOff   int64
 		wantEndOff     int64
 	}
 
-	makeTorFileList := func(structs []testStruct) []torFileEntry {
-		l := make([]torFileEntry, 0, len(structs))
+	makeTorFileList := func(structs []testStruct) []FileEntry {
+		l := make([]FileEntry, 0, len(structs))
 		for _, v := range structs {
 			l = append(l, v.tfe)
 		}
@@ -42,20 +42,20 @@ func TestNewFileList(t *testing.T) {
 		files     []testStruct
 	}{
 		{"Single File", 32, 1, 32, []testStruct{
-			{torFileEntry{32, "f1"}, 0, 0, 0, 31}},
+			{FileEntry{32, "f1"}, 0, 0, 0, 31}},
 		},
 		{"Multifile Simple", 5, 5, 25, []testStruct{
-			{torFileEntry{3, "f1"}, 0, 0, 0, 2},  // [0, 2]
-			{torFileEntry{5, "f2"}, 0, 1, 3, 2},  // [3, 7]
-			{torFileEntry{2, "f3"}, 1, 1, 3, 4},  // [8, 9]
-			{torFileEntry{13, "f4"}, 2, 4, 0, 2}, // [10, 22]
-			{torFileEntry{2, "f5"}, 4, 4, 3, 4}}, // [23, 24]
+			{FileEntry{3, "f1"}, 0, 0, 0, 2},  // [0, 2]
+			{FileEntry{5, "f2"}, 0, 1, 3, 2},  // [3, 7]
+			{FileEntry{2, "f3"}, 1, 1, 3, 4},  // [8, 9]
+			{FileEntry{13, "f4"}, 2, 4, 0, 2}, // [10, 22]
+			{FileEntry{2, "f5"}, 4, 4, 3, 4}}, // [23, 24]
 		},
 		{"Multifile Truc", 5, 5, 22, []testStruct{
-			{torFileEntry{5, "f1"}, 0, 0, 0, 4},  // [0, 4]
-			{torFileEntry{5, "f2"}, 1, 1, 0, 4},  // [5, 9]
-			{torFileEntry{10, "f3"}, 2, 3, 0, 4}, // [10, 19]
-			{torFileEntry{2, "f4"}, 4, 4, 0, 1}}, // [20, 21]
+			{FileEntry{5, "f1"}, 0, 0, 0, 4},  // [0, 4]
+			{FileEntry{5, "f2"}, 1, 1, 0, 4},  // [5, 9]
+			{FileEntry{10, "f3"}, 2, 3, 0, 4}, // [10, 19]
+			{FileEntry{2, "f4"}, 4, 4, 0, 1}}, // [20, 21]
 		},
 	}
 	for _, tt := range tests {
@@ -66,7 +66,7 @@ func TestNewFileList(t *testing.T) {
 			testFileMeta.pieceLen = tt.pieceLen
 			testFileMeta.numPieces = tt.numPieces
 
-			flist := newFileList(&testFileMeta)
+			flist := NewFileList(&testFileMeta)
 
 			checkField(t, "Total Length", tt.totalLen, flist.FileMeta().Length())
 			for i, fe := range flist.Files() {
@@ -86,10 +86,10 @@ func TestGetFiles(t *testing.T) {
 	tests := []struct {
 		name     string
 		piecelen int64
-		files    []torFileEntry
+		files    []FileEntry
 		kvp      map[int64][]string // Map piece index to file names that should be returned
 	}{
-		{"One Each", 3, []torFileEntry{
+		{"One Each", 3, []FileEntry{
 			{3, "f1"},
 			{3, "f2"},
 			{3, "f3"},
@@ -99,7 +99,7 @@ func TestGetFiles(t *testing.T) {
 			2: {"f3"},
 			3: {},
 		}},
-		{"Mix (up to 2)", 3, []torFileEntry{
+		{"Mix (up to 2)", 3, []FileEntry{
 			{4, "f1"},
 			{6, "f2"},
 			{2, "f3"},
@@ -110,7 +110,7 @@ func TestGetFiles(t *testing.T) {
 			3: {"f2", "f3"},
 			4: {},
 		}},
-		{"Triple", 9, []torFileEntry{
+		{"Triple", 9, []FileEntry{
 			{3, "f1"},
 			{3, "f2"},
 			{3, "f3"},
@@ -124,7 +124,7 @@ func TestGetFiles(t *testing.T) {
 
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
-			fl := newFileList(&testFileMeta)
+			fl := NewFileList(&testFileMeta)
 
 			// Keys are piece indices, values are slices of file paths that
 			// should be in there
@@ -164,13 +164,13 @@ func TestPiece(t *testing.T) {
 	tests := []struct {
 		name     string
 		piecelen int64
-		files    []torFileEntry
+		files    []FileEntry
 	}{
-		{"Tiny", 2, []torFileEntry{
+		{"Tiny", 2, []FileEntry{
 			{1, "A"},
 		}},
 		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
-		{"Simple", 3, []torFileEntry{
+		{"Simple", 3, []FileEntry{
 			{4, "A"},
 			{6, "B"},
 			{2, "C"},
@@ -199,7 +199,7 @@ func TestPiece(t *testing.T) {
 			// Create FileList
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
-			fl := newFileList(&testFileMeta)
+			fl := NewFileList(&testFileMeta)
 
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:curs], tt.piecelen)

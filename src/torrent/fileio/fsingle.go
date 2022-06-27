@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ type FileSingle struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func newFileSingle(meta *TorFileMeta) (*FileSingle, error) {
+func NewFileSingle(meta *TorFileMeta) (*FileSingle, error) {
 	fp, err := utils.OpenCheck(meta.name, meta.length)
 	if err != nil {
 		return nil, err

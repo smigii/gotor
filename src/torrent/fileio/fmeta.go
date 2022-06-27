@@ -1,4 +1,4 @@
-package torrent
+package fileio
 
 import (
 	"fmt"
@@ -6,6 +6,15 @@ import (
 
 	"gotor/bencode"
 )
+
+// ============================================================================
+// ERRORS =====================================================================
+
+type FileMetaError struct{ msg string }
+
+func (fme *FileMetaError) Error() string {
+	return "tracker error: " + fme.msg
+}
 
 // ============================================================================
 // STRUCTS ====================================================================
@@ -17,16 +26,8 @@ type TorFileMeta struct {
 	pieces    string
 	numPieces int64
 	length    int64
-	files     []torFileEntry
+	files     []FileEntry
 	isSingle  bool // Is this a single-file or multi-file torrent?
-}
-
-// torFileEntry holds only the data contained in a torrent's info dictionary.
-// This exists to facilitate testing; rather than passing in a bencode.List to
-// testing setup, we can pass these instead.
-type torFileEntry struct {
-	length int64
-	fpath  string
 }
 
 // ============================================================================
@@ -52,7 +53,7 @@ func (t *TorFileMeta) Length() int64 {
 	return t.length
 }
 
-func (t *TorFileMeta) Files() []torFileEntry {
+func (t *TorFileMeta) Files() []FileEntry {
 	return t.files
 }
 
@@ -63,7 +64,7 @@ func (t *TorFileMeta) IsSingle() bool {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
+func NewFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 	fdata := TorFileMeta{}
 	var err error
 
@@ -82,7 +83,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 		return nil, err
 	}
 	if len(fdata.pieces)%20 != 0 {
-		return nil, &TorError{
+		return nil, &FileMetaError{
 			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(fdata.pieces)),
 		}
 	}
@@ -98,7 +99,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 		// Try 'files'
 		files, err := info.GetList("files")
 		if err != nil {
-			return nil, &TorError{
+			return nil, &FileMetaError{
 				msg: fmt.Sprintf("missing keys 'length' and 'files', must have exactly 1"),
 			}
 		}
@@ -118,7 +119,7 @@ func newTorFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 
 func (t *TorFileMeta) PieceHash(idx int64) (string, error) {
 	if idx >= t.numPieces {
-		return "", &TorError{
+		return "", &FileMetaError{
 			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, t.numPieces-1),
 		}
 	}
@@ -129,13 +130,13 @@ func (t *TorFileMeta) PieceHash(idx int64) (string, error) {
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded
 // list.
-func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, error) {
-	sfl := make([]torFileEntry, 0, 4)
+func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, error) {
+	sfl := make([]FileEntry, 0, 4)
 
 	for _, fEntry := range benlist {
 		fDict, ok := fEntry.(bencode.Dict)
 		if !ok {
-			return nil, &TorError{
+			return nil, &FileMetaError{
 				msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
 			}
 		}
@@ -160,7 +161,7 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, e
 		for _, fPathEntry := range fPathList {
 			pathPiece, ok := fPathEntry.(string)
 			if !ok {
-				return nil, &TorError{
+				return nil, &FileMetaError{
 					msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
 				}
 			}
@@ -169,7 +170,7 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]torFileEntry, e
 		}
 		l := len(strb.String())
 
-		sfl = append(sfl, torFileEntry{
+		sfl = append(sfl, FileEntry{
 			fpath:  strb.String()[:l-1], // exclude last '/'
 			length: fLen,
 		})

@@ -2,7 +2,7 @@ package bencode
 
 import (
 	"bytes"
-	"errors"
+	"gotor/utils"
 	"os"
 	"testing"
 )
@@ -19,35 +19,19 @@ func TestBencode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := testTorrent(tt.path)
-			if e != nil {
-				t.Error(e)
+			fdata, err := os.ReadFile(tt.path)
+			utils.CheckError(t, err)
+
+			d, err := Decode(fdata)
+			utils.CheckError(t, err)
+
+			e, err := Encode(d)
+			utils.CheckError(t, err)
+
+			if !bytes.Equal(fdata, e) {
+				t.Error("encode(decode(fdata)) != fdata")
 			}
 		})
 	}
 
-}
-
-func testTorrent(path string) error {
-
-	fdata, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	d, err := Decode(fdata)
-	if err != nil {
-		return err
-	}
-
-	e, err := Encode(d)
-	if err != nil {
-		return err
-	}
-
-	if !bytes.Equal(fdata, e) {
-		return errors.New("encode(decode(fdata)) != fdata")
-	}
-
-	return nil
 }
