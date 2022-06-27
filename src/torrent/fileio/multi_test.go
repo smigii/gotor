@@ -196,7 +196,7 @@ func TestPiece(t *testing.T) {
 				curs += tf.length
 			}
 
-			// Create FileList
+			// Create MultiFileHandler
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
 			fl := NewFileList(&testFileMeta)

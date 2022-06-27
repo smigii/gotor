@@ -5,7 +5,7 @@ import "gotor/utils"
 // ============================================================================
 // STRUCTS ====================================================================
 
-type FileList struct {
+type MultiFileHandler struct {
 	files []FileEntryWrapper
 	fmeta *TorFileMeta
 	bf    *utils.Bitfield
@@ -14,28 +14,28 @@ type FileList struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (fl FileList) Files() []FileEntryWrapper {
-	return fl.files
+func (mfh *MultiFileHandler) Files() []FileEntryWrapper {
+	return mfh.files
 }
 
-func (fl FileList) FileMeta() *TorFileMeta {
-	return fl.fmeta
+func (mfh *MultiFileHandler) FileMeta() *TorFileMeta {
+	return mfh.fmeta
 }
 
-func (fl *FileList) Bitfield() *utils.Bitfield {
-	return fl.bf
+func (mfh *MultiFileHandler) Bitfield() *utils.Bitfield {
+	return mfh.bf
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func (fl *FileList) Piece(index int64) ([]byte, error) {
-	files := fl.GetFiles(index)
-	piece := make([]byte, fl.fmeta.pieceLen, fl.fmeta.pieceLen)
+func (mfh *MultiFileHandler) Piece(index int64) ([]byte, error) {
+	files := mfh.GetFiles(index)
+	piece := make([]byte, mfh.fmeta.pieceLen, mfh.fmeta.pieceLen)
 	off := int64(0)
 
 	for _, fe := range files {
-		n, e := fe.GetPiece(piece[off:], index, fl.fmeta.pieceLen)
+		n, e := fe.GetPiece(piece[off:], index, mfh.fmeta.pieceLen)
 		if e != nil {
 			// TODO: This should be handled better
 			return nil, e
@@ -46,22 +46,22 @@ func (fl *FileList) Piece(index int64) ([]byte, error) {
 	return piece[:off], nil
 }
 
-func (fl *FileList) Write(index int64, data []byte) error {
+func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 
 	return nil
 }
 
-func (fl *FileList) Validate() error {
+func (mfh *MultiFileHandler) Validate() error {
 
 	return nil
 }
 
-func (fl *FileList) Close() error {
+func (mfh *MultiFileHandler) Close() error {
 	return nil
 }
 
-func NewFileList(fmeta *TorFileMeta) *FileList {
-	flist := FileList{
+func NewFileList(fmeta *TorFileMeta) *MultiFileHandler {
+	flist := MultiFileHandler{
 		files: make([]FileEntryWrapper, 0, len(fmeta.files)),
 		fmeta: fmeta,
 	}
@@ -107,13 +107,13 @@ func NewFileList(fmeta *TorFileMeta) *FileList {
 
 // GetFiles returns all files that are contained within the specified piece
 // index.
-func (fl *FileList) GetFiles(piece int64) []FileEntryWrapper {
+func (mfh *MultiFileHandler) GetFiles(piece int64) []FileEntryWrapper {
 
 	hit := false
 	startIdx := 0
 	n := 0
 
-	for i, fe := range fl.Files() {
+	for i, fe := range mfh.Files() {
 		if fe.startPieceIdx > piece {
 			break
 		}
@@ -127,5 +127,5 @@ func (fl *FileList) GetFiles(piece int64) []FileEntryWrapper {
 		}
 	}
 
-	return fl.files[startIdx : startIdx+n]
+	return mfh.files[startIdx : startIdx+n]
 }

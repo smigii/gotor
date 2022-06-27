@@ -4,9 +4,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"gotor/torrent/fileio"
 	"os"
 	"strings"
+
+	"gotor/torrent/fileio"
 
 	"gotor/bencode"
 	"gotor/utils"
@@ -93,7 +94,7 @@ func NewTorrent(fpath string) (*Torrent, error) {
 	}
 
 	if fmeta.IsSingle() {
-		tor.fhandle, err = fileio.NewFileSingle(fmeta)
+		tor.fhandle, err = fileio.NewSingleFileHandler(fmeta)
 		if err != nil {
 			panic(err)
 		}

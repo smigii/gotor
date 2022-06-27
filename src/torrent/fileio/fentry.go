@@ -18,7 +18,7 @@ type FileEntry struct {
 }
 
 // FileEntryWrapper wraps the FileEntry struct with the starting and ending
-// indices and byte-offsets for a file. This is used by FileList structs to
+// indices and byte-offsets for a file. This is used by MultiFileHandler structs to
 // find which files are related to which pieces.
 type FileEntryWrapper struct {
 	FileEntry

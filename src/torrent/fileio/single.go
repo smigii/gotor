@@ -11,10 +11,10 @@ import (
 // ============================================================================
 // STRUCT =====================================================================
 
-// FileSingle is used for single-file torrents. It can access pieces faster
-// than FileList since it doesn't need to find out which files are contained
+// SingleFileHandler is used for single-file torrents. It can access pieces faster
+// than MultiFileHandler since it doesn't need to find out which files are contained
 // in a given piece.
-type FileSingle struct {
+type SingleFileHandler struct {
 	meta *TorFileMeta
 	fp   *os.File
 	bf   *utils.Bitfield
@@ -23,12 +23,12 @@ type FileSingle struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewFileSingle(meta *TorFileMeta) (*FileSingle, error) {
+func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 	fp, err := utils.OpenCheck(meta.name, meta.length)
 	if err != nil {
 		return nil, err
 	} else {
-		fs := FileSingle{
+		fs := SingleFileHandler{
 			meta: meta,
 			fp:   fp,
 			bf:   utils.NewBitfield(meta.NumPieces()),
@@ -41,7 +41,7 @@ func NewFileSingle(meta *TorFileMeta) (*FileSingle, error) {
 // ============================================================================
 // IMPL =======================================================================
 
-func (f *FileSingle) Piece(index int64) ([]byte, error) {
+func (f *SingleFileHandler) Piece(index int64) ([]byte, error) {
 	meta := f.meta
 
 	if index >= meta.numPieces {
@@ -64,7 +64,7 @@ func (f *FileSingle) Piece(index int64) ([]byte, error) {
 	return buf, e
 }
 
-func (f *FileSingle) Write(index int64, data []byte) error {
+func (f *SingleFileHandler) Write(index int64, data []byte) error {
 	meta := f.meta
 	if index >= meta.numPieces {
 		return fmt.Errorf("index out of bounds, got %v, max %v", index, meta.numPieces)
@@ -84,7 +84,7 @@ func (f *FileSingle) Write(index int64, data []byte) error {
 	return e
 }
 
-func (f *FileSingle) Validate() error {
+func (f *SingleFileHandler) Validate() error {
 	var i int64
 
 	for i = 0; i < f.meta.numPieces; i++ {
@@ -107,15 +107,15 @@ func (f *FileSingle) Validate() error {
 	return nil
 }
 
-func (f *FileSingle) FileMeta() *TorFileMeta {
+func (f *SingleFileHandler) FileMeta() *TorFileMeta {
 	return f.meta
 }
 
-func (f *FileSingle) Bitfield() *utils.Bitfield {
+func (f *SingleFileHandler) Bitfield() *utils.Bitfield {
 	return f.bf
 }
 
-func (f *FileSingle) Close() error {
+func (f *SingleFileHandler) Close() error {
 	if f.fp != nil {
 		return f.fp.Close()
 	} else {

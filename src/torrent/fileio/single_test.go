@@ -40,7 +40,7 @@ func TestFileSingle_Piece(t *testing.T) {
 			e := utils.WriteTestFile(tt.fpath, tt.data)
 			utils.CheckFatal(t, e)
 
-			fs, e := NewFileSingle(&testMeta)
+			fs, e := NewSingleFileHandler(&testMeta)
 			defer func() {
 				err := fs.Close()
 				utils.CheckError(t, err)
@@ -94,7 +94,7 @@ func TestFileSingle_Write(t *testing.T) {
 				isSingle:  true,
 			}
 
-			fs, e := NewFileSingle(&testMeta)
+			fs, e := NewSingleFileHandler(&testMeta)
 			defer func() {
 				err := fs.Close()
 				utils.CheckError(t, err)
