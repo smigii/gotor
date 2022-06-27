@@ -56,6 +56,10 @@ func (fl *FileList) Validate() error {
 	return nil
 }
 
+func (fl *FileList) Close() error {
+	return nil
+}
+
 func newFileList(fmeta *TorFileMeta) *FileList {
 	flist := FileList{
 		files: make([]FileEntry, 0, len(fmeta.files)),

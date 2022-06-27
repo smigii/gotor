@@ -30,4 +30,6 @@ type FileHandler interface {
 	Validate() error
 
 	Bitfield() *utils.Bitfield
+
+	Close() error
 }

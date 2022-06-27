@@ -1,6 +1,7 @@
 package torrent
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -112,4 +113,12 @@ func (f *FileSingle) FileMeta() *TorFileMeta {
 
 func (f *FileSingle) Bitfield() *utils.Bitfield {
 	return f.bf
+}
+
+func (f *FileSingle) Close() error {
+	if f.fp != nil {
+		return f.fp.Close()
+	} else {
+		return errors.New("nil file pointer")
+	}
 }

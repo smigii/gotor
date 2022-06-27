@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"time"
 )
@@ -113,40 +112,4 @@ func SHA1(data []byte) string {
 	hasher := sha1.New()
 	hasher.Write(data)
 	return string(hasher.Sum(nil))
-}
-
-func WriteTestFile(fpath string, data []byte) error {
-	f, e := os.OpenFile(fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0666)
-	if e != nil {
-		return e
-	}
-
-	_, e = f.Write(data)
-	if e != nil {
-		return e
-	}
-
-	e = f.Close()
-	if e != nil {
-		return e
-	}
-
-	return nil
-}
-
-// CleanUpTestFile will call os.RemoveAll on the base directory specified
-// in fpath.
-func CleanUpTestFile(fpath string) {
-	parts := strings.Split(fpath, "/")
-	if len(parts) == 0 {
-		fmt.Printf("Could not remove test file [%v]\n", fpath)
-		return
-	}
-
-	e := os.RemoveAll(parts[0]) // Clean up
-	if e == nil {
-		fmt.Printf("RemoveAll(%v) successful [input %v]\n", parts[0], fpath)
-	} else {
-		fmt.Printf("RemoveAll(%v) failed [input %v]\n", parts[0], fpath)
-	}
 }

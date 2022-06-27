@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"os"
 	"testing"
 )
 
@@ -20,13 +19,7 @@ func TestWriteEmptyFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			_, e := CreateZeroFilledFile(tt.fpath, tt.len)
-			if e != nil {
-				CleanUpTestFile(tt.fpath)
-				t.Error(e)
-			}
-
-			f, e := os.Open(tt.fpath)
+			f, e := CreateZeroFilledFile(tt.fpath, tt.len)
 			if e != nil {
 				CleanUpTestFile(tt.fpath)
 				t.Error(e)
@@ -38,9 +31,15 @@ func TestWriteEmptyFile(t *testing.T) {
 				t.Error(e)
 			}
 
-			if fi.Size() != int64(tt.len) {
+			if fi.Size() != tt.len {
 				CleanUpTestFile(tt.fpath)
 				t.Errorf("New file size is %v, expected %v", fi.Size(), tt.len)
+			}
+
+			e = f.Close()
+			if e != nil {
+				CleanUpTestFile(tt.fpath)
+				t.Error(e)
 			}
 
 			CleanUpTestFile(tt.fpath)

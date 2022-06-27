@@ -2,7 +2,6 @@ package torrent
 
 import (
 	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"gotor/utils"
@@ -32,28 +31,23 @@ func TestTorrent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := testTorrent(tt.path, tt.infohash)
-			if err != nil {
-				t.Error(err)
+
+			tor, err := NewTorrent(tt.path)
+			defer func() {
+				e := tor.FileHandler().Close()
+				utils.CheckError(t, e)
+				e = utils.CleanUpTestFile(tor.FileHandler().FileMeta().Name())
+				utils.CheckError(t, e)
+			}()
+			utils.CheckError(t, err)
+
+			trueHashBytes, _ := hex.DecodeString(tt.infohash)
+			trueHashString := string(trueHashBytes)
+
+			if tor.Infohash() != trueHashString {
+				t.Errorf("bad Infohash\nexpected [%v]\ngot      [%v]", tt.infohash, hex.EncodeToString([]byte(tor.Infohash())))
 			}
+
 		})
 	}
-}
-
-func testTorrent(path string, infohash string) error {
-	tor, err := NewTorrent(path)
-	defer utils.CleanUpTestFile(tor.FileHandler().FileMeta().Name())
-
-	if err != nil {
-		return err
-	}
-
-	trueHashBytes, _ := hex.DecodeString(infohash)
-	trueHashString := string(trueHashBytes)
-
-	if tor.Infohash() != trueHashString {
-		return fmt.Errorf("bad Infohash\nexpected [%v]\ngot      [%v]", infohash, hex.EncodeToString([]byte(tor.Infohash())))
-	}
-
-	return nil
 }

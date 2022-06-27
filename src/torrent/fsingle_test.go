@@ -25,7 +25,10 @@ func TestFileSingle_Piece(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer utils.CleanUpTestFile(tt.fpath)
+			defer func() {
+				err := utils.CleanUpTestFile(tt.fpath)
+				utils.CheckError(t, err)
+			}()
 
 			pieces := utils.SegmentData(tt.data, tt.piecelen)
 
@@ -35,20 +38,18 @@ func TestFileSingle_Piece(t *testing.T) {
 			testMeta.length = int64(len(tt.data))
 
 			e := utils.WriteTestFile(tt.fpath, tt.data)
-			if e != nil {
-				t.Fatal(e)
-			}
+			utils.CheckFatal(t, e)
 
-			f, e := newFileSingle(&testMeta)
-			if e != nil {
-				t.Error(e)
-			}
+			fs, e := newFileSingle(&testMeta)
+			defer func() {
+				err := fs.Close()
+				utils.CheckError(t, err)
+			}()
+			utils.CheckError(t, e)
 
 			for i := 0; i < len(pieces); i++ {
-				got, err := f.Piece(int64(i))
-				if err != nil {
-					t.Error(e)
-				}
+				got, err := fs.Piece(int64(i))
+				utils.CheckError(t, err)
 
 				if !bytes.Equal(got, pieces[i]) {
 					t.Errorf("Piece(%v)\n Got: %v\nWant: %v", i, got, pieces[i])
@@ -72,7 +73,10 @@ func TestFileSingle_Write(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer utils.CleanUpTestFile(tt.fpath)
+			defer func() {
+				e := utils.CleanUpTestFile(tt.fpath)
+				utils.CheckError(t, e)
+			}()
 
 			pieces := utils.SegmentData(tt.data, tt.pieceLen)
 			hashes := strings.Builder{}
@@ -91,21 +95,19 @@ func TestFileSingle_Write(t *testing.T) {
 			}
 
 			fs, e := newFileSingle(&testMeta)
-			if e != nil {
-				t.Error(e)
-			}
+			defer func() {
+				err := fs.Close()
+				utils.CheckError(t, err)
+			}()
+			utils.CheckError(t, e)
 
 			for i := 0; i < len(pieces); i++ {
 				e = fs.Write(int64(i), pieces[i])
-				if e != nil {
-					t.Error(e)
-				}
+				utils.CheckError(t, e)
 			}
 
 			fdata, e := os.ReadFile(tt.fpath)
-			if e != nil {
-				t.Error(e)
-			}
+			utils.CheckError(t, e)
 
 			if !bytes.Equal(tt.data, fdata) {
 				t.Errorf("Error writing data\nWant: %v\nRead: %v", tt.data, fdata)
