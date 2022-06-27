@@ -2,8 +2,9 @@ package p2p
 
 import (
 	"bytes"
-	"gotor/utils"
 	"testing"
+
+	"gotor/utils"
 )
 
 func TestBitfieldDecode(t *testing.T) {
@@ -42,7 +43,7 @@ func TestBitfieldDecode(t *testing.T) {
 					t.Error("couldn't convert to MsgBitfield")
 				}
 				want := tt.data[PayloadStart:]
-				if !bytes.Equal(want, bfmsg.Bitfield()) {
+				if !bytes.Equal(want, bfmsg.Bitfield().Data5()[5:]) {
 					t.Errorf("\nwant %v\n got %v", want, bfmsg.Bitfield())
 				}
 			}
@@ -65,7 +66,7 @@ func TestBitfieldEncode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			want := append(tt.base, tt.bf...)
-			msg, err := DecodeMsgBitfield(tt.bf, uint32(len(tt.bf))+1)
+			msg, err := DecodeMsgBitfield(want, uint32(len(tt.bf))+1)
 			utils.CheckError(t, err)
 			enc := msg.Encode()
 			if !bytes.Equal(want, enc) {

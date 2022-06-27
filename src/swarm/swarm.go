@@ -142,8 +142,8 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 	log.Printf("Sent %v handshake\n", c.RemoteAddr())
 
 	// Send bitfield
-	msg := p2p.NewMsgBitfield(s.Bitfield.Data5())
-	_, e = c.Write(msg.Encode())
+	bfmsg := p2p.NewMsgBitfield(s.Bitfield)
+	_, e = c.Write(bfmsg.Encode())
 	if e != nil {
 		return nil, e
 	}

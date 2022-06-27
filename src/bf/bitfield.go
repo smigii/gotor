@@ -8,9 +8,10 @@ import "fmt"
 // wasting time prepending 5 bytes to a potentially long slice every time we need
 // to send a
 type Bitfield struct {
-	data5 []byte // Holds the first 5 bytes + actual data
-	nbits int64
-	nset  int64
+	data5  []byte // Holds the first 5 bytes + actual data
+	nbits  int64
+	nbytes int64
+	nset   int64
 }
 
 func NewBitfield(nbits int64) *Bitfield {
@@ -20,9 +21,10 @@ func NewBitfield(nbits int64) *Bitfield {
 	}
 
 	bf := Bitfield{
-		data5: make([]byte, 5+nbytes, 5+nbytes),
-		nbits: nbits,
-		nset:  0,
+		data5:  make([]byte, 5+nbytes, 5+nbytes),
+		nbits:  nbits,
+		nbytes: nbytes,
+		nset:   0,
 	}
 
 	return &bf
@@ -44,9 +46,10 @@ func FromBytes(bytes5 []byte, nbits int64) (*Bitfield, error) {
 	}
 
 	bf := Bitfield{
-		data5: bytes5,
-		nbits: nbits,
-		nset:  0,
+		data5:  bytes5,
+		nbits:  nbits,
+		nbytes: lenbytes,
+		nset:   0,
 	}
 	bf.calcNset()
 
@@ -131,4 +134,12 @@ func (bf *Bitfield) Data5() []byte {
 
 func (bf *Bitfield) Complete() bool {
 	return bf.nset == bf.nbits
+}
+
+func (bf *Bitfield) Nbits() int64 {
+	return bf.nbits
+}
+
+func (bf *Bitfield) Nbytes() int64 {
+	return bf.nbytes
 }
