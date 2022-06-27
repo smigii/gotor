@@ -3,14 +3,16 @@ package swarm
 import (
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"strings"
+
+	"gotor/bf"
 	"gotor/p2p"
 	"gotor/peer"
 	"gotor/torrent"
 	"gotor/tracker"
 	"gotor/utils"
-	"log"
-	"net"
-	"strings"
 )
 
 // ============================================================================
@@ -23,7 +25,7 @@ type Swarm struct {
 	Tor      *torrent.Torrent
 	Id       string
 	Port     uint16
-	Bitfield *utils.Bitfield
+	Bitfield *bf.Bitfield
 }
 
 // ============================================================================
@@ -47,7 +49,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	// For now, we're just acting as a server, so fill bitfield
 	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())
 	swarm.Stats = tracker.NewStats(0, 0, 0)
-	swarm.Bitfield = utils.NewBitfield(swarm.Tor.FileHandler().FileMeta().NumPieces())
+	swarm.Bitfield = bf.NewBitfield(swarm.Tor.FileHandler().FileMeta().NumPieces())
 	swarm.Bitfield.Fill()
 
 	// Make first contact with tracker
@@ -140,7 +142,7 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 	log.Printf("Sent %v handshake\n", c.RemoteAddr())
 
 	// Send bitfield
-	msg := p2p.NewMsgBitfield(s.Bitfield.Data())
+	msg := p2p.NewMsgBitfield(s.Bitfield.Data5())
 	_, e = c.Write(msg.Encode())
 	if e != nil {
 		return nil, e

@@ -1,6 +1,8 @@
 package fileio
 
-import "gotor/utils"
+import (
+	"gotor/bf"
+)
 
 /* ============================================================================
 TODO: Optimize file IO operations through batching
@@ -29,7 +31,7 @@ type FileHandler interface {
 	// check the pieces and their hashes, updating the results in its bitfield.
 	Validate() error
 
-	Bitfield() *utils.Bitfield
+	Bitfield() *bf.Bitfield
 
 	Close() error
 }

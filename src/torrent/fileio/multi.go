@@ -1,6 +1,8 @@
 package fileio
 
-import "gotor/utils"
+import (
+	"gotor/bf"
+)
 
 // ============================================================================
 // STRUCTS ====================================================================
@@ -8,7 +10,7 @@ import "gotor/utils"
 type MultiFileHandler struct {
 	files []FileEntryWrapper
 	fmeta *TorFileMeta
-	bf    *utils.Bitfield
+	bf    *bf.Bitfield
 }
 
 // ============================================================================
@@ -22,7 +24,7 @@ func (mfh *MultiFileHandler) FileMeta() *TorFileMeta {
 	return mfh.fmeta
 }
 
-func (mfh *MultiFileHandler) Bitfield() *utils.Bitfield {
+func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
 	return mfh.bf
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"gotor/bf"
 	"gotor/utils"
 )
 
@@ -17,7 +18,7 @@ import (
 type SingleFileHandler struct {
 	meta *TorFileMeta
 	fp   *os.File
-	bf   *utils.Bitfield
+	bf   *bf.Bitfield
 }
 
 // ============================================================================
@@ -31,7 +32,7 @@ func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 		fs := SingleFileHandler{
 			meta: meta,
 			fp:   fp,
-			bf:   utils.NewBitfield(meta.NumPieces()),
+			bf:   bf.NewBitfield(meta.NumPieces()),
 		}
 		//err = fs.Validate()  // broken
 		return &fs, err
@@ -111,7 +112,7 @@ func (f *SingleFileHandler) FileMeta() *TorFileMeta {
 	return f.meta
 }
 
-func (f *SingleFileHandler) Bitfield() *utils.Bitfield {
+func (f *SingleFileHandler) Bitfield() *bf.Bitfield {
 	return f.bf
 }
 
