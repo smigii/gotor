@@ -13,7 +13,7 @@ func TestNewFileList(t *testing.T) {
 	testFileMeta := TorFileMeta{}
 
 	type testStruct struct {
-		tfe            FileEntry
+		fentry         FileEntry
 		wantStartPiece int64
 		wantEndPiece   int64
 		wantStartOff   int64
@@ -23,7 +23,7 @@ func TestNewFileList(t *testing.T) {
 	makeTorFileList := func(structs []testStruct) []FileEntry {
 		l := make([]FileEntry, 0, len(structs))
 		for _, v := range structs {
-			l = append(l, v.tfe)
+			l = append(l, v.fentry)
 		}
 		return l
 	}
@@ -66,10 +66,19 @@ func TestNewFileList(t *testing.T) {
 			testFileMeta.pieceLen = tt.pieceLen
 			testFileMeta.numPieces = tt.numPieces
 
-			flist := NewFileList(&testFileMeta)
+			mfh, e := NewMultiFileHandler(&testFileMeta)
+			defer func() {
+				err := mfh.Close()
+				utils.CheckError(t, err)
+				for _, tstruct := range tt.files {
+					err = utils.CleanUpTestFile(tstruct.fentry.fpath)
+					utils.CheckError(t, err)
+				}
+			}()
+			utils.CheckError(t, e)
 
-			checkField(t, "Total Length", tt.totalLen, flist.FileMeta().Length())
-			for i, fe := range flist.Files() {
+			checkField(t, "Total Length", tt.totalLen, mfh.FileMeta().Length())
+			for i, fe := range mfh.Files() {
 				checkField(t, "Start Piece", tt.files[i].wantStartPiece, fe.StartPiece())
 				checkField(t, "End Piece", tt.files[i].wantEndPiece, fe.EndPiece())
 				checkField(t, "Start Piece Offset", tt.files[i].wantStartOff, fe.StartPieceOff())
@@ -124,13 +133,23 @@ func TestGetFiles(t *testing.T) {
 
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
-			fl := NewFileList(&testFileMeta)
+
+			mfh, e := NewMultiFileHandler(&testFileMeta)
+			defer func() {
+				err := mfh.Close()
+				utils.CheckError(t, err)
+				for _, fentry := range tt.files {
+					err = utils.CleanUpTestFile(fentry.fpath)
+					utils.CheckError(t, err)
+				}
+			}()
+			utils.CheckError(t, e)
 
 			// Keys are piece indices, values are slices of file paths that
 			// should be in there
 			for k, v := range tt.kvp {
 
-				files := fl.GetFiles(k)
+				files := mfh.GetFiles(k)
 
 				got := make([]string, 0, len(files))
 				for _, f := range files {
@@ -175,13 +194,20 @@ func TestPiece(t *testing.T) {
 			{6, "B"},
 			{2, "C"},
 		}},
+		{"Multi", 4, []FileEntry{
+			{5, "A"},
+			{1, "B"},
+			{1, "C"},
+			{1, "D"},
+		}},
 	}
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
 			defer func() {
 				for _, tf := range tt.files {
-					utils.CleanUpTestFile(tf.fpath)
+					err := utils.CleanUpTestFile(tf.fpath)
+					utils.CheckError(t, err)
 				}
 			}()
 
@@ -199,7 +225,13 @@ func TestPiece(t *testing.T) {
 			// Create MultiFileHandler
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
-			fl := NewFileList(&testFileMeta)
+
+			mfh, e := NewMultiFileHandler(&testFileMeta)
+			utils.CheckError(t, e)
+			defer func() {
+				err := mfh.Close()
+				utils.CheckError(t, err)
+			}()
 
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:curs], tt.piecelen)
@@ -208,7 +240,7 @@ func TestPiece(t *testing.T) {
 			var i int64
 			for i = 0; i < npieces; i++ {
 				expect := pieces[i]
-				got, err := fl.Piece(i)
+				got, err := mfh.Piece(i)
 				if err != nil {
 					t.Fatal(err)
 				}

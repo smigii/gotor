@@ -20,8 +20,8 @@ func TestFileSingle_Piece(t *testing.T) {
 		piecelen int64
 		data     []byte
 	}{
-		{"No trunc piece", "f1", 3, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
-		{"Trunc piece", "f2", 3, []byte{0, 1, 2, 3}},
+		{"No trunc piece", "single1", 3, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
+		{"Trunc piece", "single2", 3, []byte{0, 1, 2, 3}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -40,15 +40,15 @@ func TestFileSingle_Piece(t *testing.T) {
 			e := utils.WriteTestFile(tt.fpath, tt.data)
 			utils.CheckFatal(t, e)
 
-			fs, e := NewSingleFileHandler(&testMeta)
+			sfh, e := NewSingleFileHandler(&testMeta)
 			defer func() {
-				err := fs.Close()
+				err := sfh.Close()
 				utils.CheckError(t, err)
 			}()
 			utils.CheckError(t, e)
 
 			for i := 0; i < len(pieces); i++ {
-				got, err := fs.Piece(int64(i))
+				got, err := sfh.Piece(int64(i))
 				utils.CheckError(t, err)
 
 				if !bytes.Equal(got, pieces[i]) {

@@ -2,8 +2,6 @@ package fileio
 
 import (
 	"fmt"
-	"io"
-	"os"
 )
 
 // ============================================================================
@@ -26,6 +24,13 @@ type FileEntryWrapper struct {
 	endPieceIdx   int64 // Last piece index (inclusive)
 	startPieceOff int64 // Offset from start of startPieceIdx
 	endPieceOff   int64 // Offset from start of endPieceIdx (inclusive)
+}
+
+// pieceInfo holds the SEEK_SET seek offset and amount to read for a given
+// piece index.
+type pieceInfo struct {
+	SeekAmnt int64
+	ReadAmnt int64
 }
 
 // ============================================================================
@@ -60,9 +65,8 @@ func (few *FileEntryWrapper) EndPieceOff() int64 {
 // ============================================================================
 // FUNK =======================================================================
 
-// GetPiece writes the file data of the specified piece index to the dst byte
-// slice.
-func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (int64, error) {
+// PieceInfo calculates and returns pieceInfo struct for a given piece index.
+func (few *FileEntryWrapper) PieceInfo(index int64, pieceLen int64) (*pieceInfo, error) {
 	/* ===================================================================
 
 	Consider the following,
@@ -73,7 +77,7 @@ func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (
 
 	----------------------------------------------------------------------
 
-	Say we call GetPiece() on file B for piece 2
+	Say we call PieceInfo() on file B for piece 2
 
 	File B starts at piece 1. We need to skip the first two bytes
 	in the file so that we are pointing to piece 2, then write those
@@ -81,7 +85,7 @@ func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (
 
 	----------------------------------------------------------------------
 
-	Now say we call GetPiece on file B for piece 3
+	Now say we call PieceInfo on file B for piece 3
 
 	After skipping over 5 bytes (2 of piece 1, 3 of piece 2), we need to
 	make sure we only write a single byte, as the remainder of the piece
@@ -90,7 +94,7 @@ func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (
 	=================================================================== */
 
 	if index < few.startPieceIdx || index > few.endPieceIdx {
-		return 0, fmt.Errorf("index %v out of range", index)
+		return nil, fmt.Errorf("index %v out of range", index)
 	}
 
 	seekAmnt := int64(0)
@@ -112,39 +116,18 @@ func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (
 
 	// Adjust readAmnt
 	if index < few.endPieceIdx {
-		// We can just write pieceLen bytes, as the file contains more pieces.
-		readAmnt = pieceLen
+		// The file contains greater piece indices
+		readAmnt = pieceLen - cursorOff
 	} else {
-		// The remainder of the piece is in a later file.
-		readAmnt = few.endPieceOff + 1
+		// The file contains no greater piece indices
+		readAmnt = (few.endPieceOff - cursorOff) + 1
 	}
 
-	if int64(len(dst)) < readAmnt {
-		readAmnt = int64(len(dst))
+	info := pieceInfo{
+		SeekAmnt: seekAmnt,
+		ReadAmnt: readAmnt,
 	}
 
-	f, e := os.Open(few.fpath)
-	if e != nil {
-		return 0, e
-	}
+	return &info, nil
 
-	_, e = f.Seek(seekAmnt, io.SeekStart)
-	if e != nil {
-		return 0, e
-	}
-
-	n, e := f.Read(dst[:readAmnt])
-	if e != nil {
-		return 0, e
-	}
-	if int64(n) != readAmnt {
-		return int64(n), fmt.Errorf("only read %v bytes, should have read %v", n, readAmnt)
-	}
-
-	e = f.Close()
-	if e != nil {
-		return 0, e
-	}
-
-	return readAmnt, nil
 }

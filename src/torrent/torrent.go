@@ -99,7 +99,10 @@ func NewTorrent(fpath string) (*Torrent, error) {
 			panic(err)
 		}
 	} else {
-		tor.fhandle = fileio.NewFileList(fmeta)
+		tor.fhandle, err = fileio.NewMultiFileHandler(fmeta)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &tor, nil

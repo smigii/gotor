@@ -9,6 +9,7 @@ import (
 
 type MultiFileHandler struct {
 	files []FileEntryWrapper
+	rw    *readerWriter
 	meta  *TorFileMeta
 	bf    *bf.Bitfield
 }
@@ -37,12 +38,18 @@ func (mfh *MultiFileHandler) Piece(index int64) ([]byte, error) {
 	off := int64(0)
 
 	for _, fe := range files {
-		n, e := fe.GetPiece(piece[off:], index, mfh.meta.pieceLen)
+		pInfo, e := fe.PieceInfo(index, mfh.meta.pieceLen)
 		if e != nil {
-			// TODO: This should be handled better
 			return nil, e
 		}
-		off += n
+
+		subpiece := piece[off : off+pInfo.ReadAmnt]
+		e = mfh.rw.Read(fe.fpath, pInfo.SeekAmnt, subpiece)
+		if e != nil {
+			return nil, e
+		}
+
+		off += pInfo.ReadAmnt
 	}
 
 	return piece[:off], nil
@@ -59,36 +66,43 @@ func (mfh *MultiFileHandler) Validate() error {
 }
 
 func (mfh *MultiFileHandler) Close() error {
-	return nil
+	return mfh.rw.CloseAll()
 }
 
-func NewFileList(fmeta *TorFileMeta) *MultiFileHandler {
+func NewMultiFileHandler(meta *TorFileMeta) (*MultiFileHandler, error) {
+	rw, e := NewReaderWriter(meta.files)
+	if e != nil {
+		return nil, e
+	}
+
 	flist := MultiFileHandler{
-		files: make([]FileEntryWrapper, 0, len(fmeta.files)),
-		meta:  fmeta,
+		files: make([]FileEntryWrapper, 0, len(meta.files)),
+		meta:  meta,
+		bf:    bf.NewBitfield(meta.numPieces),
+		rw:    rw,
 	}
 
 	// This should be 0 by default, since multi-file torrents
 	// shouldn't have a "length" key in their info dictionary
-	fmeta.length = 0
+	meta.length = 0
 
 	index := int64(0)  // Piece index
 	offset := int64(0) // Offset within index
 
-	for _, tfe := range fmeta.files {
+	for _, tfe := range meta.files {
 
 		startPiece := index
 		startOff := offset
-		endPiece := index + ((tfe.length - 1) / fmeta.pieceLen)
-		endOff := offset + ((tfe.length - 1) % fmeta.pieceLen)
-		if endOff >= fmeta.pieceLen {
-			endPiece += endOff / fmeta.pieceLen
-			endOff %= fmeta.pieceLen
+		endPiece := index + ((tfe.length - 1) / meta.pieceLen)
+		endOff := offset + ((tfe.length - 1) % meta.pieceLen)
+		if endOff >= meta.pieceLen {
+			endPiece += endOff / meta.pieceLen
+			endOff %= meta.pieceLen
 		}
 
 		index = endPiece
 		offset = endOff + 1
-		if offset == fmeta.pieceLen {
+		if offset == meta.pieceLen {
 			index++
 			offset = 0
 		}
@@ -104,7 +118,7 @@ func NewFileList(fmeta *TorFileMeta) *MultiFileHandler {
 		})
 	}
 
-	return &flist
+	return &flist, nil
 }
 
 // GetFiles returns all files that are contained within the specified piece

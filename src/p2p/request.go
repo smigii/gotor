@@ -45,35 +45,35 @@ func NewMsgRequest(index uint32, begin uint32, reqlen uint32) *MsgRequest {
 // ============================================================================
 // GETTER =====================================================================
 
-func (h *MsgRequest) Index() uint32 {
-	return h.index
+func (mr *MsgRequest) Index() uint32 {
+	return mr.index
 }
 
-func (h *MsgRequest) Begin() uint32 {
-	return h.begin
+func (mr *MsgRequest) Begin() uint32 {
+	return mr.begin
 }
 
-func (h *MsgRequest) ReqLen() uint32 {
-	return h.reqlen
+func (mr *MsgRequest) ReqLen() uint32 {
+	return mr.reqlen
 }
 
 // ============================================================================
 // IMPL =======================================================================
 
-func (h *MsgRequest) Encode() []byte {
-	pl := h.msgBase.Encode()
-	binary.BigEndian.PutUint32(pl, h.index)
-	binary.BigEndian.PutUint32(pl, h.begin)
-	binary.BigEndian.PutUint32(pl, h.reqlen)
+func (mr *MsgRequest) Encode() []byte {
+	pl := mr.msgBase.Encode()
+	binary.BigEndian.PutUint32(pl, mr.index)
+	binary.BigEndian.PutUint32(pl, mr.begin)
+	binary.BigEndian.PutUint32(pl, mr.reqlen)
 	return pl
 }
 
-func (mp *MsgRequest) String() string {
+func (mr *MsgRequest) String() string {
 	strb := strings.Builder{}
 	strb.WriteString("Message: Request\n")
-	strb.WriteString(fmt.Sprintf("Index: %v\n", mp.index))
-	strb.WriteString(fmt.Sprintf("Begin: %v\n", mp.begin))
-	strb.WriteString(fmt.Sprintf("Req Len: %v", mp.reqlen))
+	strb.WriteString(fmt.Sprintf("Index: %v\n", mr.index))
+	strb.WriteString(fmt.Sprintf("Begin: %v\n", mr.begin))
+	strb.WriteString(fmt.Sprintf("Req Len: %v", mr.reqlen))
 	return strb.String()
 }
 
