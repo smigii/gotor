@@ -1,9 +1,7 @@
 package fileio
 
 import (
-	"errors"
 	"fmt"
-	"os"
 
 	"gotor/bf"
 	"gotor/utils"
@@ -16,23 +14,29 @@ import (
 // than MultiFileHandler since it doesn't need to find out which files are contained
 // in a given piece.
 type SingleFileHandler struct {
-	meta *TorFileMeta
-	fp   *os.File
-	bf   *bf.Bitfield
+	meta  *TorFileMeta
+	entry *FileEntry
+	pool  *FilePool
+	bf    *bf.Bitfield
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
 func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
-	fp, err := utils.OpenCheck(meta.name, meta.length)
+	fentry := FileEntry{
+		length: meta.Length(),
+		fpath:  meta.Name(),
+	}
+	fpool, err := NewFilePool([]FileEntry{fentry})
 	if err != nil {
 		return nil, err
 	} else {
 		fs := SingleFileHandler{
-			meta: meta,
-			fp:   fp,
-			bf:   bf.NewBitfield(meta.NumPieces()),
+			meta:  meta,
+			pool:  fpool,
+			entry: &fentry,
+			bf:    bf.NewBitfield(meta.NumPieces()),
 		}
 		//err = fs.Validate()  // broken
 		return &fs, err
@@ -60,7 +64,7 @@ func (f *SingleFileHandler) Piece(index int64) ([]byte, error) {
 
 	buf := make([]byte, readAmnt, readAmnt)
 
-	_, e := f.fp.ReadAt(buf, seekAmnt)
+	e := f.pool.Read(f.entry.fpath, seekAmnt, buf)
 
 	return buf, e
 }
@@ -80,7 +84,7 @@ func (f *SingleFileHandler) Write(index int64, data []byte) error {
 
 	seekAmnt := index * meta.pieceLen
 
-	_, e := f.fp.WriteAt(data, seekAmnt)
+	e := f.pool.Write(f.entry.fpath, seekAmnt, data)
 
 	return e
 }
@@ -117,9 +121,5 @@ func (f *SingleFileHandler) Bitfield() *bf.Bitfield {
 }
 
 func (f *SingleFileHandler) Close() error {
-	if f.fp != nil {
-		return f.fp.Close()
-	} else {
-		return errors.New("nil file pointer")
-	}
+	return f.pool.CloseAll()
 }

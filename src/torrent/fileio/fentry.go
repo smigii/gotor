@@ -63,31 +63,31 @@ func (few *FileEntryWrapper) EndPieceOff() int64 {
 // GetPiece writes the file data of the specified piece index to the dst byte
 // slice.
 func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (int64, error) {
-	/*
+	/* ===================================================================
 
-		Consider the following,
+	Consider the following,
 
-		4 pieces, each of length 3, which make up 3 files (A, B, C)
-		[A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
-		Pieces are 0-indexed.
+	4 pieces, each of length 3, which make up 3 files (A, B, C)
+	[A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
+	Pieces are 0-indexed.
 
-		-----------------------------------------------------------------------
+	----------------------------------------------------------------------
 
-		Say we call GetPiece() on file B for piece 2
+	Say we call GetPiece() on file B for piece 2
 
-		File B starts at piece 1. We need to skip the first two bytes
-		in the file so that we are pointing to piece 2, then write those
-		3 bytes to dst.
+	File B starts at piece 1. We need to skip the first two bytes
+	in the file so that we are pointing to piece 2, then write those
+	3 bytes to dst.
 
-		-----------------------------------------------------------------------
+	----------------------------------------------------------------------
 
-		Now say we call GetPiece on file B for piece 3
+	Now say we call GetPiece on file B for piece 3
 
-		After skipping over 5 bytes (2 of piece 1, 3 of piece 2), we need to
-		make sure we only write a single byte, as the remainder of the piece
-		is in file C.
+	After skipping over 5 bytes (2 of piece 1, 3 of piece 2), we need to
+	make sure we only write a single byte, as the remainder of the piece
+	is in file C.
 
-	*/
+	=================================================================== */
 
 	if index < few.startPieceIdx || index > few.endPieceIdx {
 		return 0, fmt.Errorf("index %v out of range", index)
@@ -128,7 +128,7 @@ func (few *FileEntryWrapper) GetPiece(dst []byte, index int64, pieceLen int64) (
 		return 0, e
 	}
 
-	_, e = f.Seek(int64(seekAmnt), io.SeekStart)
+	_, e = f.Seek(seekAmnt, io.SeekStart)
 	if e != nil {
 		return 0, e
 	}

@@ -9,7 +9,7 @@ import (
 
 type MultiFileHandler struct {
 	files []FileEntryWrapper
-	fmeta *TorFileMeta
+	meta  *TorFileMeta
 	bf    *bf.Bitfield
 }
 
@@ -21,7 +21,7 @@ func (mfh *MultiFileHandler) Files() []FileEntryWrapper {
 }
 
 func (mfh *MultiFileHandler) FileMeta() *TorFileMeta {
-	return mfh.fmeta
+	return mfh.meta
 }
 
 func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
@@ -33,11 +33,11 @@ func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
 
 func (mfh *MultiFileHandler) Piece(index int64) ([]byte, error) {
 	files := mfh.GetFiles(index)
-	piece := make([]byte, mfh.fmeta.pieceLen, mfh.fmeta.pieceLen)
+	piece := make([]byte, mfh.meta.pieceLen, mfh.meta.pieceLen)
 	off := int64(0)
 
 	for _, fe := range files {
-		n, e := fe.GetPiece(piece[off:], index, mfh.fmeta.pieceLen)
+		n, e := fe.GetPiece(piece[off:], index, mfh.meta.pieceLen)
 		if e != nil {
 			// TODO: This should be handled better
 			return nil, e
@@ -65,7 +65,7 @@ func (mfh *MultiFileHandler) Close() error {
 func NewFileList(fmeta *TorFileMeta) *MultiFileHandler {
 	flist := MultiFileHandler{
 		files: make([]FileEntryWrapper, 0, len(fmeta.files)),
-		fmeta: fmeta,
+		meta:  fmeta,
 	}
 
 	// This should be 0 by default, since multi-file torrents
@@ -93,7 +93,7 @@ func NewFileList(fmeta *TorFileMeta) *MultiFileHandler {
 			offset = 0
 		}
 
-		flist.fmeta.length += tfe.length
+		flist.meta.length += tfe.length
 
 		flist.files = append(flist.files, FileEntryWrapper{
 			FileEntry:     tfe,
