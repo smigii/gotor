@@ -200,7 +200,7 @@ func Decode(data []byte) (DecodeResult, error) {
 		n = uint64(MsgHaveTotalLen)
 	case TypeBitfield:
 		msg, err = DecodeMsgBitfield(data, msglen)
-		if err != nil {
+		if err == nil {
 			n = uint64(uint32(MsgLengthPrefixLen) + msg.Length())
 		}
 	case TypeRequest:

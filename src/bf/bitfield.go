@@ -48,7 +48,7 @@ func FromBytes(bytes5 []byte, nbits int64) (*Bitfield, error) {
 	bf := Bitfield{
 		data5:  bytes5,
 		nbits:  nbits,
-		nbytes: lenbytes,
+		nbytes: lenbytes - 5,
 		nset:   0,
 	}
 	bf.calcNset()
