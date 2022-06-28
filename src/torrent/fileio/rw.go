@@ -34,15 +34,15 @@ func (pe *PathError) Error() string {
 // ============================================================================
 // STRUCTS ====================================================================
 
-type FilePool struct {
+type readerWriter struct {
 	pool map[string]*os.File
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewFilePool(files []FileEntry) (*FilePool, error) {
-	filePool := FilePool{
+func NewReaderWriter(files []FileEntry) (*readerWriter, error) {
+	filePool := readerWriter{
 		pool: make(map[string]*os.File),
 	}
 
@@ -67,9 +67,9 @@ func NewFilePool(files []FileEntry) (*FilePool, error) {
 	return &filePool, err
 }
 
-func (fp *FilePool) Write(fpath string, seekAmnt int64, data []byte) error {
+func (rw *readerWriter) Write(fpath string, seekAmnt int64, data []byte) error {
 
-	ptr, ok := fp.pool[fpath]
+	ptr, ok := rw.pool[fpath]
 	if ok {
 		_, e := ptr.WriteAt(data, seekAmnt)
 		return e
@@ -78,8 +78,8 @@ func (fp *FilePool) Write(fpath string, seekAmnt int64, data []byte) error {
 	}
 }
 
-func (fp *FilePool) Read(fpath string, seekAmnt int64, buf []byte) error {
-	ptr, ok := fp.pool[fpath]
+func (rw *readerWriter) Read(fpath string, seekAmnt int64, buf []byte) error {
+	ptr, ok := rw.pool[fpath]
 	if ok {
 		_, e := ptr.ReadAt(buf, seekAmnt)
 		return e
@@ -88,7 +88,7 @@ func (fp *FilePool) Read(fpath string, seekAmnt int64, buf []byte) error {
 	}
 }
 
-func (fp *FilePool) Move(fromPath string, toPath string) error {
+func (rw *readerWriter) Move(fromPath string, toPath string) error {
 
 	// Acquire outer lock
 	// Acquire all inner locks
@@ -99,8 +99,8 @@ func (fp *FilePool) Move(fromPath string, toPath string) error {
 	return nil
 }
 
-func (fp *FilePool) Close(fpath string) error {
-	ptr, ok := fp.pool[fpath]
+func (rw *readerWriter) Close(fpath string) error {
+	ptr, ok := rw.pool[fpath]
 	if ok {
 		e := ptr.Close()
 		return e
@@ -109,8 +109,8 @@ func (fp *FilePool) Close(fpath string) error {
 	}
 }
 
-func (fp *FilePool) CloseAll() error {
-	for _, fptr := range fp.pool {
+func (rw *readerWriter) CloseAll() error {
+	for _, fptr := range rw.pool {
 		e := fptr.Close()
 		if e != nil {
 			return e

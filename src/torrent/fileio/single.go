@@ -16,7 +16,7 @@ import (
 type SingleFileHandler struct {
 	meta  *TorFileMeta
 	entry *FileEntry
-	pool  *FilePool
+	pool  *readerWriter
 	bf    *bf.Bitfield
 }
 
@@ -28,7 +28,7 @@ func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 		length: meta.Length(),
 		fpath:  meta.Name(),
 	}
-	fpool, err := NewFilePool([]FileEntry{fentry})
+	fpool, err := NewReaderWriter([]FileEntry{fentry})
 	if err != nil {
 		return nil, err
 	} else {
