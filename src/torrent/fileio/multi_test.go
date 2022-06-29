@@ -3,12 +3,13 @@ package fileio
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gotor/utils"
 )
 
-func TestNewFileList(t *testing.T) {
+func TestNewMultiFileHandler(t *testing.T) {
 
 	testFileMeta := TorFileMeta{}
 
@@ -169,7 +170,7 @@ func TestGetFiles(t *testing.T) {
 	}
 }
 
-func TestPiece(t *testing.T) {
+func TestMultiFileHandler_Piece(t *testing.T) {
 
 	testFileMeta := TorFileMeta{}
 
@@ -247,6 +248,101 @@ func TestPiece(t *testing.T) {
 
 				if !bytes.Equal(expect, got) {
 					t.Fatalf("Piece(%v)\nWant: %v\n Got: %v", i, expect, got)
+				}
+			}
+		})
+	}
+}
+
+func TestMultiFileHandler_Write(t *testing.T) {
+	testFileMeta := TorFileMeta{}
+
+	type TestFileEntry struct {
+		FileEntry
+		data []byte
+	}
+
+	tests := []struct {
+		name     string
+		piecelen int64
+		files    []TestFileEntry
+	}{
+		{"Tiny", 2, []TestFileEntry{
+			{FileEntry{1, "A"}, []byte{'a'}},
+		}},
+		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
+		{"Simple", 3, []TestFileEntry{
+			{FileEntry{4, "A"}, []byte{'a', 'b', 'c', 'd'}},
+			{FileEntry{6, "B"}, []byte{'e', 'f', 'g', 'h', 'i', 'j'}},
+			{FileEntry{2, "C"}, []byte{'k', 'l'}},
+		}},
+		// [A|A|A|A]  [A|B|C|D]  [E|E| | ]
+		{"Multi", 4, []TestFileEntry{
+			{FileEntry{5, "A"}, []byte{'a', 'b', 'c', 'd', 'e'}},
+			{FileEntry{1, "B"}, []byte{'f'}},
+			{FileEntry{1, "C"}, []byte{'g'}},
+			{FileEntry{1, "D"}, []byte{'h'}},
+			{FileEntry{2, "E"}, []byte{'i', 'j'}},
+		}},
+	}
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				for _, tf := range tt.files {
+					err := utils.CleanUpTestFile(tf.fpath)
+					utils.CheckError(t, err)
+				}
+			}()
+
+			// Create empty files and create a single data byte array
+			data := make([]byte, 0, 0)
+			fileEntries := make([]FileEntry, 0, len(tt.files))
+			for _, tf := range tt.files {
+				f, e := utils.CreateZeroFilledFile(tf.fpath, tf.length)
+				utils.CheckError(t, e)
+				e = f.Close()
+				utils.CheckError(t, e)
+
+				data = append(data, tf.data...)
+				fileEntries = append(fileEntries, tf.FileEntry)
+			}
+
+			// Get the pieces and hashes
+			pieces := utils.SegmentData(data, tt.piecelen)
+			hashes := strings.Builder{}
+			for _, p := range pieces {
+				hashes.WriteString(utils.SHA1(p))
+			}
+
+			// Create MultiFileHandler
+			testFileMeta.pieces = hashes.String()
+			testFileMeta.files = fileEntries
+			testFileMeta.pieceLen = tt.piecelen
+			testFileMeta.length = int64(len(data))
+			testFileMeta.isSingle = false
+			testFileMeta.numPieces = int64(len(pieces))
+			testFileMeta.name = "testwrite"
+
+			mfh, e := NewMultiFileHandler(&testFileMeta)
+			utils.CheckError(t, e)
+			defer func() {
+				err := mfh.Close()
+				utils.CheckError(t, err)
+			}()
+
+			// Write all the pieces
+			for i, p := range pieces {
+				e := mfh.Write(int64(i), p)
+				utils.CheckError(t, e)
+			}
+
+			// Read all the pieces
+			for i, p := range pieces {
+				got, e := mfh.Piece(int64(i))
+				utils.CheckError(t, e)
+				if !bytes.Equal(got, p) {
+					t.Errorf("Piece(%v)\n Got: %v\nWant: %v", i, got, p)
 				}
 			}
 		})

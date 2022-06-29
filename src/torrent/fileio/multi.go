@@ -2,6 +2,7 @@ package fileio
 
 import (
 	"gotor/bf"
+	"gotor/utils"
 )
 
 // ============================================================================
@@ -56,6 +57,32 @@ func (mfh *MultiFileHandler) Piece(index int64) ([]byte, error) {
 }
 
 func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
+
+	wantHash, e := mfh.meta.PieceHash(index)
+	if e != nil {
+		return e
+	}
+
+	if utils.SHA1(data) != wantHash {
+		return &HashError{}
+	}
+
+	off := int64(0)
+	files := mfh.GetFiles(index)
+	for _, fe := range files {
+		pInfo, e := fe.PieceInfo(index, mfh.meta.pieceLen)
+		if e != nil {
+			return e
+		}
+
+		subpiece := data[off : off+pInfo.ReadAmnt]
+		e = mfh.rw.Write(fe.Path(), pInfo.SeekAmnt, subpiece)
+		if e != nil {
+			return e
+		}
+
+		off += pInfo.ReadAmnt
+	}
 
 	return nil
 }

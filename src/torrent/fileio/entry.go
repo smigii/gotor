@@ -27,7 +27,9 @@ type FileEntryWrapper struct {
 }
 
 // pieceInfo holds the SEEK_SET seek offset and amount to read for a given
-// piece index.
+// piece index. For torrent [A|A|A] [A|B|B] [B|B|B] [B|C|C], PieceInfo(1) on
+// file A would give {3, 1}, as we need to seek 3 bytes, and only 1 byte of the
+// piece belongs to A.
 type pieceInfo struct {
 	SeekAmnt int64
 	ReadAmnt int64
