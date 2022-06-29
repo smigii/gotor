@@ -33,27 +33,30 @@ func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
 // ============================================================================
 // FUNC =======================================================================
 
-func (mfh *MultiFileHandler) Piece(index int64) ([]byte, error) {
+func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 	files := mfh.GetFiles(index)
-	piece := make([]byte, mfh.meta.pieceLen, mfh.meta.pieceLen)
 	off := int64(0)
 
 	for _, fe := range files {
 		pInfo, e := fe.PieceInfo(index, mfh.meta.pieceLen)
 		if e != nil {
-			return nil, e
+			return 0, e
 		}
 
-		subpiece := piece[off : off+pInfo.ReadAmnt]
+		if int64(len(buf)) < (off + pInfo.ReadAmnt) {
+			panic("buffer not long enough")
+		}
+
+		subpiece := buf[off : off+pInfo.ReadAmnt]
 		e = mfh.rw.Read(fe.fpath, pInfo.SeekAmnt, subpiece)
 		if e != nil {
-			return nil, e
+			return 0, e
 		}
 
 		off += pInfo.ReadAmnt
 	}
 
-	return piece[:off], nil
+	return off, nil
 }
 
 func (mfh *MultiFileHandler) Write(index int64, data []byte) error {

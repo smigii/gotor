@@ -237,16 +237,17 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 			// Loop through all pieces and verify a match
 			pieces := utils.SegmentData(data[:curs], tt.piecelen)
 			npieces := int64(len(pieces))
+			got := make([]byte, tt.piecelen, tt.piecelen)
 
 			var i int64
 			for i = 0; i < npieces; i++ {
 				expect := pieces[i]
-				got, err := mfh.Piece(i)
+				n, err := mfh.Piece(i, got)
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				if !bytes.Equal(expect, got) {
+				if !bytes.Equal(expect, got[:n]) {
 					t.Fatalf("Piece(%v)\nWant: %v\n Got: %v", i, expect, got)
 				}
 			}
@@ -338,10 +339,12 @@ func TestMultiFileHandler_Write(t *testing.T) {
 			}
 
 			// Read all the pieces
+			got := make([]byte, tt.piecelen, tt.piecelen)
 			for i, p := range pieces {
-				got, e := mfh.Piece(int64(i))
+				n, e := mfh.Piece(int64(i), got)
 				utils.CheckError(t, e)
-				if !bytes.Equal(got, p) {
+
+				if !bytes.Equal(got[:n], p) {
 					t.Errorf("Piece(%v)\n Got: %v\nWant: %v", i, got, p)
 				}
 			}

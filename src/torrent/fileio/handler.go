@@ -18,10 +18,14 @@ func (he *HashError) Error() string {
 }
 
 type FileHandler interface {
-	// Piece returns the file data at the given piece index.
-	Piece(index int64) ([]byte, error)
+	// Piece reads the file data for the given index into the buf byte slice.
+	// Returns the number of bytes read.
+	Piece(index int64, buf []byte) (int64, error)
 
 	// Write writes the given data to the file(s) corresponding to piece index.
+	// It will only write data if the SHA1 hash of the data matches the hash
+	// given in the meta's hash string. If it does not match, a HashError will
+	// be returned.
 	Write(index int64, data []byte) error
 
 	// FileMeta returns the metadata for the files in the torrent.

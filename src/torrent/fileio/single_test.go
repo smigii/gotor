@@ -47,11 +47,12 @@ func TestFileSingle_Piece(t *testing.T) {
 			}()
 			utils.CheckError(t, e)
 
+			got := make([]byte, tt.piecelen, tt.piecelen)
 			for i := 0; i < len(pieces); i++ {
-				got, err := sfh.Piece(int64(i))
+				n, err := sfh.Piece(int64(i), got)
 				utils.CheckError(t, err)
 
-				if !bytes.Equal(got, pieces[i]) {
+				if !bytes.Equal(got[:n], pieces[i]) {
 					t.Errorf("Piece(%v)\n Got: %v\nWant: %v", i, got, pieces[i])
 				}
 			}

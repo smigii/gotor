@@ -16,7 +16,7 @@ import (
 type SingleFileHandler struct {
 	meta  *TorFileMeta
 	entry *FileEntry
-	pool  *readerWriter
+	rw    *readerWriter
 	bf    *bf.Bitfield
 }
 
@@ -28,13 +28,13 @@ func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 		length: meta.Length(),
 		fpath:  meta.Name(),
 	}
-	fpool, err := NewReaderWriter([]FileEntry{fentry})
+	rw, err := NewReaderWriter([]FileEntry{fentry})
 	if err != nil {
 		return nil, err
 	} else {
 		fs := SingleFileHandler{
 			meta:  meta,
-			pool:  fpool,
+			rw:    rw,
 			entry: &fentry,
 			bf:    bf.NewBitfield(meta.NumPieces()),
 		}
@@ -46,11 +46,11 @@ func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 // ============================================================================
 // IMPL =======================================================================
 
-func (f *SingleFileHandler) Piece(index int64) ([]byte, error) {
+func (f *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 	meta := f.meta
 
 	if index >= meta.numPieces {
-		return nil, fmt.Errorf("attempted to get index %v, max is %v", index, meta.numPieces-1)
+		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, meta.numPieces-1)
 	}
 
 	seekAmnt := meta.pieceLen * index
@@ -62,11 +62,12 @@ func (f *SingleFileHandler) Piece(index int64) ([]byte, error) {
 		readAmnt = truncAmnt
 	}
 
-	buf := make([]byte, readAmnt, readAmnt)
+	if int64(len(buf)) < readAmnt {
+		return 0, fmt.Errorf("buffer to small, need %v, got %v", readAmnt, len(buf))
+	}
 
-	e := f.pool.Read(f.entry.fpath, seekAmnt, buf)
-
-	return buf, e
+	e := f.rw.Read(f.entry.fpath, seekAmnt, buf[:readAmnt])
+	return readAmnt, e
 }
 
 func (f *SingleFileHandler) Write(index int64, data []byte) error {
@@ -84,30 +85,30 @@ func (f *SingleFileHandler) Write(index int64, data []byte) error {
 
 	seekAmnt := index * meta.pieceLen
 
-	e := f.pool.Write(f.entry.fpath, seekAmnt, data)
+	e := f.rw.Write(f.entry.fpath, seekAmnt, data)
 
 	return e
 }
 
 func (f *SingleFileHandler) Validate() error {
-	var i int64
+	//var i int64
 
-	for i = 0; i < f.meta.numPieces; i++ {
-
-		knownHash, e := f.meta.PieceHash(i)
-		if e != nil {
-			return e
-		}
-
-		// TODO: Grabbing pieces one at a time is slow
-		piece, e := f.Piece(i)
-		if e != nil {
-			return e
-		}
-
-		val := utils.SHA1(piece) == knownHash
-		f.bf.Set(i, val)
-	}
+	//for i = 0; i < f.meta.numPieces; i++ {
+	//
+	//	knownHash, e := f.meta.PieceHash(i)
+	//	if e != nil {
+	//		return e
+	//	}
+	//
+	//	// TODO: Grabbing pieces one at a time is slow
+	//	piece, e := f.Piece(i)
+	//	if e != nil {
+	//		return e
+	//	}
+	//
+	//	val := utils.SHA1(piece) == knownHash
+	//	f.bf.Set(i, val)
+	//}
 
 	return nil
 }
@@ -121,5 +122,5 @@ func (f *SingleFileHandler) Bitfield() *bf.Bitfield {
 }
 
 func (f *SingleFileHandler) Close() error {
-	return f.pool.CloseAll()
+	return f.rw.CloseAll()
 }
