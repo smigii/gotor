@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -49,17 +50,17 @@ func (tor *Torrent) FileHandler() fileio.FileHandler {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewTorrent(fpath string) (*Torrent, error) {
+func NewTorrent(torpath string) (*Torrent, error) {
 
 	tor := Torrent{}
 	var err error
 
-	f, err := os.ReadFile(fpath)
+	fdata, err := os.ReadFile(torpath)
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := bencode.Decode(f)
+	d, err := bencode.Decode(fdata)
 	if err != nil {
 		return nil, err
 	}
@@ -134,4 +135,99 @@ func (tor *Torrent) String() string {
 	}
 
 	return strb.String()
+}
+
+func CreateTorrent(paths []string, announce string, pieceLen int64) (*Torrent, error) {
+
+	fentries := make([]fileio.FileEntry, 0, len(paths))
+
+	const mib = 1048576
+	const maxBuf = 10 * mib
+
+	npieces := maxBuf / pieceLen
+	bufSize := npieces * pieceLen
+
+	buf := make([]byte, bufSize, bufSize)
+	buflen := int64(0)
+	pieceHashes := strings.Builder{}
+	nPieces := int64(0)
+
+	for _, fpath := range paths {
+
+		fptr, e := os.Open(fpath)
+		if e != nil {
+			return nil, e
+		}
+
+		stat, e := fptr.Stat()
+		if e != nil {
+			return nil, e
+		}
+
+		fentries = append(fentries, fileio.MakeFileEntry(fpath, stat.Size()))
+
+		for {
+			// Fill buffer with data
+			n, e := fptr.Read(buf[buflen:])
+			if e != nil {
+				if e != io.EOF {
+					return nil, e
+				}
+				// If we reached end of file, break and start processing
+				// next file.
+				break
+			}
+			buflen += int64(n)
+
+			// If the buffer is now full, process the pieces.
+			// then "clear" the buffer and loop again.
+			if buflen == bufSize {
+				pieces := utils.SegmentData(buf, pieceLen)
+				for _, piece := range pieces {
+					pieceHash := utils.SHA1(piece)
+					pieceHashes.WriteString(pieceHash)
+					nPieces++
+				}
+				buflen = 0
+			}
+		}
+	}
+
+	// Process anything remaining in the buffer
+	pieces := utils.SegmentData(buf[:buflen], pieceLen)
+	for _, piece := range pieces {
+		pieceHash := utils.SHA1(piece)
+		pieceHashes.WriteString(pieceHash)
+		nPieces++
+	}
+
+	var fh fileio.FileHandler
+	if len(paths) == 1 {
+		meta, e := fileio.CreateFileMeta(paths[0], pieceLen, pieceHashes.String(), fentries)
+		if e != nil {
+			return nil, e
+		}
+
+		fh, e = fileio.NewSingleFileHandler(meta)
+		if e != nil {
+			return nil, e
+		}
+	} else {
+		// TODO: implement names and  stuff
+		meta, e := fileio.CreateFileMeta("TBI", pieceLen, pieceHashes.String(), fentries)
+		if e != nil {
+			return nil, e
+		}
+
+		fh, e = fileio.NewMultiFileHandler(meta)
+		if e != nil {
+			return nil, e
+		}
+	}
+
+	return &Torrent{
+		infohash: "",
+		announce: announce,
+		fhandle:  fh,
+	}, nil
 }

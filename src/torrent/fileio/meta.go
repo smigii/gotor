@@ -1,6 +1,7 @@
 package fileio
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -63,6 +64,29 @@ func (t *TorFileMeta) IsSingle() bool {
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
+
+func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntry) (*TorFileMeta, error) {
+
+	if len(hashes)%20 != 0 {
+		return nil, errors.New("hashes must be multiple of 20")
+	}
+
+	length := int64(0)
+	for _, fentry := range files {
+		length += fentry.Length()
+	}
+
+	return &TorFileMeta{
+		name:      name,
+		pieceLen:  pieceLen,
+		pieces:    hashes,
+		numPieces: int64(len(hashes) / 20),
+		length:    length,
+		files:     files,
+		isSingle:  len(files) == 1,
+	}, nil
+
+}
 
 func NewFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 	fdata := TorFileMeta{}

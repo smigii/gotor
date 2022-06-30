@@ -78,13 +78,13 @@ func (rw *readerWriter) Write(fpath string, seekAmnt int64, data []byte) error {
 	}
 }
 
-func (rw *readerWriter) Read(fpath string, seekAmnt int64, buf []byte) error {
+func (rw *readerWriter) Read(fpath string, seekAmnt int64, buf []byte) (int64, error) {
 	ptr, ok := rw.pool[fpath]
 	if ok {
-		_, e := ptr.ReadAt(buf, seekAmnt)
-		return e
+		n, e := ptr.ReadAt(buf, seekAmnt)
+		return int64(n), e
 	} else {
-		return &PathError{fpath: fpath}
+		return 0, &PathError{fpath: fpath}
 	}
 }
 

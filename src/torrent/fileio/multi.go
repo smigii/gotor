@@ -48,7 +48,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		}
 
 		subpiece := buf[off : off+pInfo.ReadAmnt]
-		e = mfh.rw.Read(fe.fpath, pInfo.SeekAmnt, subpiece)
+		_, e = mfh.rw.Read(fe.fpath, pInfo.SeekAmnt, subpiece)
 		if e != nil {
 			return 0, e
 		}

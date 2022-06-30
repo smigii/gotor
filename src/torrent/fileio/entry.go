@@ -67,6 +67,13 @@ func (few *FileEntryWrapper) EndPieceOff() int64 {
 // ============================================================================
 // FUNK =======================================================================
 
+func MakeFileEntry(fpath string, length int64) FileEntry {
+	return FileEntry{
+		length: length,
+		fpath:  fpath,
+	}
+}
+
 // PieceInfo calculates and returns pieceInfo struct for a given piece index.
 func (few *FileEntryWrapper) PieceInfo(index int64, pieceLen int64) (*pieceInfo, error) {
 	/* ===================================================================

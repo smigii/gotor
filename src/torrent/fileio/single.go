@@ -2,6 +2,7 @@ package fileio
 
 import (
 	"fmt"
+	"io"
 
 	"gotor/bf"
 	"gotor/utils"
@@ -66,7 +67,7 @@ func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		return 0, fmt.Errorf("buffer to small, need %v, got %v", readAmnt, len(buf))
 	}
 
-	e := sfh.rw.Read(sfh.entry.fpath, seekAmnt, buf[:readAmnt])
+	_, e := sfh.rw.Read(sfh.entry.fpath, seekAmnt, buf[:readAmnt])
 	return readAmnt, e
 }
 
@@ -91,6 +92,37 @@ func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
 }
 
 func (sfh *SingleFileHandler) Validate() error {
+
+	const mib = 1048576
+	const maxBuf = 10 * mib
+
+	meta := sfh.FileMeta()
+	npieces := maxBuf / meta.PieceLen()
+	bufSize := npieces * meta.PieceLen()
+
+	buf := make([]byte, bufSize, bufSize)
+	seek := int64(0)
+	index := int64(0) // Piece index
+
+	for {
+		n, e := sfh.rw.Read(meta.Name(), seek, buf)
+		if e == io.EOF {
+			break
+		}
+		if e != nil {
+			return e
+		}
+		seek += n
+
+		pieces := utils.SegmentData(buf, meta.PieceLen())
+		for _, piece := range pieces {
+			wantHash, _ := meta.PieceHash(index)
+			gotHash := utils.SHA1(piece)
+			eq := wantHash == gotHash
+			sfh.Bitfield().Set(index, eq)
+			index++
+		}
+	}
 
 	return nil
 }
