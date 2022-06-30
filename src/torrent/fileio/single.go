@@ -46,8 +46,8 @@ func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
 // ============================================================================
 // IMPL =======================================================================
 
-func (f *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
-	meta := f.meta
+func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
+	meta := sfh.meta
 
 	if index >= meta.numPieces {
 		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, meta.numPieces-1)
@@ -66,12 +66,12 @@ func (f *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		return 0, fmt.Errorf("buffer to small, need %v, got %v", readAmnt, len(buf))
 	}
 
-	e := f.rw.Read(f.entry.fpath, seekAmnt, buf[:readAmnt])
+	e := sfh.rw.Read(sfh.entry.fpath, seekAmnt, buf[:readAmnt])
 	return readAmnt, e
 }
 
-func (f *SingleFileHandler) Write(index int64, data []byte) error {
-	meta := f.meta
+func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
+	meta := sfh.meta
 	if index >= meta.numPieces {
 		return fmt.Errorf("index out of bounds, got %v, max %v", index, meta.numPieces)
 	}
@@ -85,42 +85,24 @@ func (f *SingleFileHandler) Write(index int64, data []byte) error {
 
 	seekAmnt := index * meta.pieceLen
 
-	e := f.rw.Write(f.entry.fpath, seekAmnt, data)
+	e := sfh.rw.Write(sfh.entry.fpath, seekAmnt, data)
 
 	return e
 }
 
-func (f *SingleFileHandler) Validate() error {
-	//var i int64
-
-	//for i = 0; i < f.meta.numPieces; i++ {
-	//
-	//	knownHash, e := f.meta.PieceHash(i)
-	//	if e != nil {
-	//		return e
-	//	}
-	//
-	//	// TODO: Grabbing pieces one at a time is slow
-	//	piece, e := f.Piece(i)
-	//	if e != nil {
-	//		return e
-	//	}
-	//
-	//	val := utils.SHA1(piece) == knownHash
-	//	f.bf.Set(i, val)
-	//}
+func (sfh *SingleFileHandler) Validate() error {
 
 	return nil
 }
 
-func (f *SingleFileHandler) FileMeta() *TorFileMeta {
-	return f.meta
+func (sfh *SingleFileHandler) FileMeta() *TorFileMeta {
+	return sfh.meta
 }
 
-func (f *SingleFileHandler) Bitfield() *bf.Bitfield {
-	return f.bf
+func (sfh *SingleFileHandler) Bitfield() *bf.Bitfield {
+	return sfh.bf
 }
 
-func (f *SingleFileHandler) Close() error {
-	return f.rw.CloseAll()
+func (sfh *SingleFileHandler) Close() error {
+	return sfh.rw.CloseAll()
 }

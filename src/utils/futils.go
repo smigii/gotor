@@ -84,7 +84,7 @@ func OpenCheck(fpath string, length int64) (*os.File, error) {
 	if chkLen == length {
 		return fp, nil
 	} else if chkLen > length {
-		e = fp.Truncate(int64(length))
+		e = fp.Truncate(length)
 		if e != nil {
 			return nil, e
 		} else {

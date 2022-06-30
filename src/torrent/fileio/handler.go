@@ -2,6 +2,7 @@ package fileio
 
 import (
 	"gotor/bf"
+	"gotor/utils"
 )
 
 /* ============================================================================
@@ -38,4 +39,30 @@ type FileHandler interface {
 	Bitfield() *bf.Bitfield
 
 	Close() error
+}
+
+// ValidateHandler will probably be deleted. Will write a more optimized
+// FileHandler.Validate() for SingleFileHandler and MultiFileHandler
+// that reads in larger chunks of data at a time.
+func ValidateHandler(fh FileHandler) error {
+	buf := make([]byte, fh.FileMeta().PieceLen(), fh.FileMeta().PieceLen())
+
+	var i int64
+	for i = 0; i < fh.FileMeta().numPieces; i++ {
+
+		knownHash, e := fh.FileMeta().PieceHash(i)
+		if e != nil {
+			return e
+		}
+
+		n, e := fh.Piece(i, buf)
+		if e != nil {
+			return e
+		}
+
+		val := utils.SHA1(buf[:n]) == knownHash
+		fh.Bitfield().Set(i, val)
+	}
+
+	return nil
 }
