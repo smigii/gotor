@@ -284,10 +284,10 @@ func TestMultiFileHandler_Write(t *testing.T) {
 		// [A|A|A|A]  [A|B|C|D]  [E|E| | ]
 		{"Multi", 4, []TestFileEntry{
 			{MakeFileEntry("f1", 5), []byte{'a', 'b', 'c', 'd', 'e'}},
-			{MakeFileEntry("f1", 1), []byte{'f'}},
-			{MakeFileEntry("f2", 1), []byte{'g'}},
-			{MakeFileEntry("f3", 1), []byte{'h'}},
-			{MakeFileEntry("f4", 2), []byte{'i', 'j'}},
+			{MakeFileEntry("f2", 1), []byte{'f'}},
+			{MakeFileEntry("f3", 1), []byte{'g'}},
+			{MakeFileEntry("f4", 1), []byte{'h'}},
+			{MakeFileEntry("f5", 2), []byte{'i', 'j'}},
 		}},
 	}
 	for _, tt := range tests {

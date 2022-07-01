@@ -40,7 +40,8 @@ func TestFileSingle_Piece(t *testing.T) {
 			e := utils.WriteTestFile(tt.fpath, tt.data)
 			utils.CheckFatal(t, e)
 
-			sfh, e := NewSingleFileHandler(&testMeta)
+			sfh := NewSingleFileHandler(&testMeta)
+			e = sfh.OCAT()
 			defer func() {
 				err := sfh.Close()
 				utils.CheckError(t, err)
@@ -95,15 +96,16 @@ func TestFileSingle_Write(t *testing.T) {
 				isSingle:  true,
 			}
 
-			fs, e := NewSingleFileHandler(&testMeta)
+			sfh := NewSingleFileHandler(&testMeta)
+			e := sfh.OCAT()
 			defer func() {
-				err := fs.Close()
+				err := sfh.Close()
 				utils.CheckError(t, err)
 			}()
 			utils.CheckError(t, e)
 
 			for i := 0; i < len(pieces); i++ {
-				e = fs.Write(int64(i), pieces[i])
+				e = sfh.Write(int64(i), pieces[i])
 				utils.CheckError(t, e)
 			}
 
