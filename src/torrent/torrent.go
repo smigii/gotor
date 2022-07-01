@@ -190,10 +190,6 @@ func FromTorrentFile(torpath string) (*Torrent, error) {
 	} else {
 		tor.fhandle = fileio.NewMultiFileHandler(fmeta)
 	}
-	err = tor.fhandle.OCAT()
-	if err != nil {
-		panic(err)
-	}
 
 	return &tor, nil
 }

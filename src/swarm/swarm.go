@@ -7,7 +7,6 @@ import (
 	"net"
 	"strings"
 
-	"gotor/bf"
 	"gotor/p2p"
 	"gotor/peer"
 	"gotor/torrent"
@@ -19,13 +18,12 @@ import (
 // STRUCTS ====================================================================
 
 type Swarm struct {
-	State    *tracker.State
-	Stats    *tracker.Stats
-	Peers    peer.List
-	Tor      *torrent.Torrent
-	Id       string
-	Port     uint16
-	Bitfield *bf.Bitfield
+	State *tracker.State
+	Stats *tracker.Stats
+	Peers peer.List
+	Tor   *torrent.Torrent
+	Id    string
+	Port  uint16
 }
 
 // ============================================================================
@@ -45,12 +43,16 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 		return nil, err
 	}
 
-	// TODO: Check opts.output and see how much is really done
-	// For now, we're just acting as a server, so fill bitfield
-	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())
-	swarm.Stats = tracker.NewStats(0, 0, 0)
-	swarm.Bitfield = bf.NewBitfield(swarm.Tor.FileHandler().TorInfo().NumPieces())
-	swarm.Bitfield.Fill()
+	// OCAT files
+	log.Printf("openning and validating files")
+	err = swarm.Tor.FileHandler().OCAT()
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Check Tor.FileHandler().Bitfield() to see how much is truly left
+	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())  // Full leech
+	swarm.Stats = tracker.NewStats(0, 0, 0) // Seed
 
 	// Make first contact with tracker
 	log.Printf("sending get to tracker [%v]\n", swarm.Tor.Announce())
@@ -142,7 +144,8 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 	log.Printf("Sent %v handshake\n", c.RemoteAddr())
 
 	// Send bitfield
-	bfmsg := p2p.NewMsgBitfield(s.Bitfield)
+	bf := s.Tor.FileHandler().Bitfield()
+	bfmsg := p2p.NewMsgBitfield(bf)
 	_, e = c.Write(bfmsg.Encode())
 	if e != nil {
 		return nil, e
