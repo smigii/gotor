@@ -80,7 +80,7 @@ func TestNewMultiFileHandler(t *testing.T) {
 			}()
 			utils.CheckError(t, e)
 
-			checkField(t, "Total Length", tt.totalLen, mfh.FileMeta().Length())
+			checkField(t, "Total Length", tt.totalLen, mfh.TorInfo().Length())
 			for i, fe := range mfh.Files() {
 				checkField(t, "Start Piece", tt.files[i].wantStartPiece, fe.StartPiece())
 				checkField(t, "End Piece", tt.files[i].wantEndPiece, fe.EndPiece())

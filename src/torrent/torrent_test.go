@@ -32,11 +32,11 @@ func TestTorrent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			tor, err := NewTorrent(tt.path)
+			tor, err := FromTorrentFile(tt.path)
 			defer func() {
 				e := tor.FileHandler().Close()
 				utils.CheckError(t, e)
-				e = utils.CleanUpTestFile(tor.FileHandler().FileMeta().Name())
+				e = utils.CleanUpTestFile(tor.FileHandler().TorInfo().Name())
 				utils.CheckError(t, e)
 			}()
 			utils.CheckError(t, err)

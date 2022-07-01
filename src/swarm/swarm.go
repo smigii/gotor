@@ -40,7 +40,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 
 	// Read torrent file
 	log.Printf("reading torrent file [%v]\n", opts.Input())
-	swarm.Tor, err = torrent.NewTorrent(opts.Input())
+	swarm.Tor, err = torrent.FromTorrentFile(opts.Input())
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	// For now, we're just acting as a server, so fill bitfield
 	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())
 	swarm.Stats = tracker.NewStats(0, 0, 0)
-	swarm.Bitfield = bf.NewBitfield(swarm.Tor.FileHandler().FileMeta().NumPieces())
+	swarm.Bitfield = bf.NewBitfield(swarm.Tor.FileHandler().TorInfo().NumPieces())
 	swarm.Bitfield.Fill()
 
 	// Make first contact with tracker

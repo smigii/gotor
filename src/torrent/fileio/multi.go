@@ -10,8 +10,8 @@ import (
 
 type MultiFileHandler struct {
 	files []FileEntryWrapper
+	info  *TorInfo
 	rw    *readerWriter
-	meta  *TorInfo
 	bf    *bf.Bitfield
 }
 
@@ -22,8 +22,8 @@ func (mfh *MultiFileHandler) Files() []FileEntryWrapper {
 	return mfh.files
 }
 
-func (mfh *MultiFileHandler) FileMeta() *TorInfo {
-	return mfh.meta
+func (mfh *MultiFileHandler) TorInfo() *TorInfo {
+	return mfh.info
 }
 
 func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
@@ -38,7 +38,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 	off := int64(0)
 
 	for _, fe := range files {
-		pInfo, e := fe.PieceInfo(index, mfh.meta.pieceLen)
+		pInfo, e := fe.PieceInfo(index, mfh.info.pieceLen)
 		if e != nil {
 			return 0, e
 		}
@@ -61,7 +61,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 
 func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 
-	wantHash, e := mfh.meta.PieceHash(index)
+	wantHash, e := mfh.info.PieceHash(index)
 	if e != nil {
 		return e
 	}
@@ -73,7 +73,7 @@ func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 	off := int64(0)
 	files := mfh.GetFiles(index)
 	for _, fe := range files {
-		pInfo, e := fe.PieceInfo(index, mfh.meta.pieceLen)
+		pInfo, e := fe.PieceInfo(index, mfh.info.pieceLen)
 		if e != nil {
 			return e
 		}
@@ -107,42 +107,42 @@ func (mfh *MultiFileHandler) Close() error {
 	return mfh.rw.CloseAll()
 }
 
-func NewMultiFileHandler(meta *TorInfo) *MultiFileHandler {
-	rw := NewReaderWriter(meta.files)
+func NewMultiFileHandler(info *TorInfo) *MultiFileHandler {
+	rw := NewReaderWriter(info.files)
 
 	flist := MultiFileHandler{
-		files: make([]FileEntryWrapper, 0, len(meta.files)),
-		meta:  meta,
-		bf:    bf.NewBitfield(meta.numPieces),
+		files: make([]FileEntryWrapper, 0, len(info.files)),
+		info:  info,
+		bf:    bf.NewBitfield(info.numPieces),
 		rw:    rw,
 	}
 
 	// This should be 0 by default, since multi-file torrents
 	// shouldn't have a "length" key in their info dictionary
-	meta.length = 0
+	info.length = 0
 
 	index := int64(0)  // Piece index
 	offset := int64(0) // Offset within index
 
-	for _, tfe := range meta.files {
+	for _, tfe := range info.files {
 
 		startPiece := index
 		startOff := offset
-		endPiece := index + ((tfe.length - 1) / meta.pieceLen)
-		endOff := offset + ((tfe.length - 1) % meta.pieceLen)
-		if endOff >= meta.pieceLen {
-			endPiece += endOff / meta.pieceLen
-			endOff %= meta.pieceLen
+		endPiece := index + ((tfe.length - 1) / info.pieceLen)
+		endOff := offset + ((tfe.length - 1) % info.pieceLen)
+		if endOff >= info.pieceLen {
+			endPiece += endOff / info.pieceLen
+			endOff %= info.pieceLen
 		}
 
 		index = endPiece
 		offset = endOff + 1
-		if offset == meta.pieceLen {
+		if offset == info.pieceLen {
 			index++
 			offset = 0
 		}
 
-		flist.meta.length += tfe.length
+		flist.info.length += tfe.length
 
 		flist.files = append(flist.files, FileEntryWrapper{
 			FileEntry:     tfe,

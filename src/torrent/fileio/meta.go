@@ -196,10 +196,8 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, erro
 		}
 		l := len(strb.String())
 
-		sfl = append(sfl, FileEntry{
-			torPath: strb.String()[:l-1], // exclude last '/'
-			length:  fLen,
-		})
+		// exclude last '/'
+		sfl = append(sfl, MakeFileEntry(strb.String()[:l-1], fLen))
 	}
 
 	return sfl, nil

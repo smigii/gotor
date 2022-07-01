@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"gotor/swarm"
 	"gotor/torrent"
 	"gotor/utils"
-	"log"
 )
 
 func main() {
@@ -41,7 +42,7 @@ func CmdSwarm(opts *utils.Opts) {
 }
 
 func CmdTorInfo(opts *utils.Opts) {
-	tor, e := torrent.NewTorrent(opts.Input())
+	tor, e := torrent.FromTorrentFile(opts.Input())
 	if e != nil {
 		log.Fatal(e)
 	}

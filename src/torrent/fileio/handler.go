@@ -25,16 +25,15 @@ type FileHandler interface {
 
 	// Write writes the given data to the file(s) corresponding to piece index.
 	// It will only write data if the SHA1 hash of the data matches the hash
-	// given in the meta's hash string. If it does not match, a HashError will
+	// given in the info's hash string. If it does not match, a HashError will
 	// be returned.
 	Write(index int64, data []byte) error
-
-	// FileMeta returns the metadata for the files in the torrent.
-	FileMeta() *TorInfo
 
 	// Validate will look through the file(s) specified in the torrent and
 	// check the pieces and their hashes, updating the results in its bitfield.
 	Validate() error
+
+	TorInfo() *TorInfo
 
 	Bitfield() *bf.Bitfield
 
@@ -51,12 +50,12 @@ type FileHandler interface {
 // FileHandler.Validate() for SingleFileHandler and MultiFileHandler
 // that reads in larger chunks of data at a time.
 func ValidateHandler(fh FileHandler) error {
-	buf := make([]byte, fh.FileMeta().PieceLen(), fh.FileMeta().PieceLen())
+	buf := make([]byte, fh.TorInfo().PieceLen(), fh.TorInfo().PieceLen())
 
 	var i int64
-	for i = 0; i < fh.FileMeta().numPieces; i++ {
+	for i = 0; i < fh.TorInfo().numPieces; i++ {
 
-		knownHash, e := fh.FileMeta().PieceHash(i)
+		knownHash, e := fh.TorInfo().PieceHash(i)
 		if e != nil {
 			return e
 		}

@@ -15,7 +15,7 @@ import (
 // than MultiFileHandler since it doesn't need to find out which files are contained
 // in a given piece.
 type SingleFileHandler struct {
-	meta  *TorInfo
+	info  *TorInfo
 	entry *FileEntry
 	rw    *readerWriter
 	bf    *bf.Bitfield
@@ -24,18 +24,15 @@ type SingleFileHandler struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewSingleFileHandler(meta *TorInfo) *SingleFileHandler {
-	fentry := FileEntry{
-		length:  meta.Length(),
-		torPath: meta.Name(),
-	}
+func NewSingleFileHandler(info *TorInfo) *SingleFileHandler {
+	fentry := MakeFileEntry(info.Name(), info.Length())
 	rw := NewReaderWriter([]FileEntry{fentry})
 
 	return &SingleFileHandler{
-		meta:  meta,
+		info:  info,
 		rw:    rw,
 		entry: &fentry,
-		bf:    bf.NewBitfield(meta.NumPieces()),
+		bf:    bf.NewBitfield(info.NumPieces()),
 	}
 }
 
@@ -43,18 +40,18 @@ func NewSingleFileHandler(meta *TorInfo) *SingleFileHandler {
 // IMPL =======================================================================
 
 func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
-	meta := sfh.meta
+	info := sfh.info
 
-	if index >= meta.numPieces {
-		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, meta.numPieces-1)
+	if index >= info.numPieces {
+		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, info.numPieces-1)
 	}
 
-	seekAmnt := meta.pieceLen * index
-	readAmnt := meta.pieceLen
-	truncAmnt := meta.length % meta.pieceLen
+	seekAmnt := info.pieceLen * index
+	readAmnt := info.pieceLen
+	truncAmnt := info.length % info.pieceLen
 
 	// Last piece may be truncated
-	if index == meta.numPieces-1 && truncAmnt != 0 {
+	if index == info.numPieces-1 && truncAmnt != 0 {
 		readAmnt = truncAmnt
 	}
 
@@ -67,19 +64,19 @@ func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 }
 
 func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
-	meta := sfh.meta
-	if index >= meta.numPieces {
-		return fmt.Errorf("index out of bounds, got %v, max %v", index, meta.numPieces)
+	info := sfh.info
+	if index >= info.numPieces {
+		return fmt.Errorf("index out of bounds, got %v, max %v", index, info.numPieces)
 	}
 
 	hash := utils.SHA1(data)
-	knownHash, _ := meta.PieceHash(index)
+	knownHash, _ := info.PieceHash(index)
 
 	if hash != knownHash {
 		return &HashError{}
 	}
 
-	seekAmnt := index * meta.pieceLen
+	seekAmnt := index * info.pieceLen
 
 	e := sfh.rw.Write(sfh.entry.torPath, seekAmnt, data)
 
@@ -91,16 +88,16 @@ func (sfh *SingleFileHandler) Validate() error {
 	const mib = 1048576
 	const maxBuf = 10 * mib
 
-	meta := sfh.FileMeta()
-	npieces := maxBuf / meta.PieceLen()
-	bufSize := npieces * meta.PieceLen()
+	info := sfh.TorInfo()
+	npieces := maxBuf / info.PieceLen()
+	bufSize := npieces * info.PieceLen()
 
 	buf := make([]byte, bufSize, bufSize)
 	seek := int64(0)
 	index := int64(0) // Piece index
 
 	for {
-		n, e := sfh.rw.Read(meta.Name(), seek, buf)
+		n, e := sfh.rw.Read(info.Name(), seek, buf)
 		if e == io.EOF {
 			break
 		}
@@ -109,9 +106,9 @@ func (sfh *SingleFileHandler) Validate() error {
 		}
 		seek += n
 
-		pieces := utils.SegmentData(buf, meta.PieceLen())
+		pieces := utils.SegmentData(buf, info.PieceLen())
 		for _, piece := range pieces {
-			wantHash, _ := meta.PieceHash(index)
+			wantHash, _ := info.PieceHash(index)
 			gotHash := utils.SHA1(piece)
 			eq := wantHash == gotHash
 			sfh.Bitfield().Set(index, eq)
@@ -122,8 +119,8 @@ func (sfh *SingleFileHandler) Validate() error {
 	return nil
 }
 
-func (sfh *SingleFileHandler) FileMeta() *TorInfo {
-	return sfh.meta
+func (sfh *SingleFileHandler) TorInfo() *TorInfo {
+	return sfh.info
 }
 
 func (sfh *SingleFileHandler) Bitfield() *bf.Bitfield {
