@@ -3,9 +3,14 @@ package fileio
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"gotor/bencode"
+	"gotor/utils"
 )
 
 // ============================================================================
@@ -65,6 +70,78 @@ func (ti *TorInfo) IsSingle() bool {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
+func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int64) (*TorInfo, error) {
+	fentries := make([]FileEntry, 0, len(paths))
+
+	const mib = 1048576
+	const maxBuf = 5 * mib
+
+	npieces := maxBuf / pieceLen
+	bufSize := npieces * pieceLen
+
+	buf := make([]byte, bufSize, bufSize)
+	buflen := int64(0)
+	pieceHashes := strings.Builder{}
+
+	// Multifile torrents don't include the base directory in the files dictionary.
+	if len(paths) > 1 {
+		workingDir = filepath.Join(workingDir, name)
+	}
+
+	for _, fpath := range paths {
+
+		localPath := filepath.Join(workingDir, fpath)
+
+		fptr, e := os.Open(localPath)
+		if e != nil {
+			return nil, e
+		}
+
+		stat, e := fptr.Stat()
+		if e != nil {
+			return nil, e
+		}
+
+		fentry := MakeFileEntry(fpath, stat.Size())
+		fentry.SetLocalPath(localPath)
+		fentries = append(fentries, fentry)
+
+		for {
+			// Fill buffer with data
+			n, e := fptr.Read(buf[buflen:])
+			if e != nil {
+				if e != io.EOF {
+					return nil, e
+				}
+				// If we reached end of file, break and start processing
+				// next file.
+				break
+			}
+			buflen += int64(n)
+
+			// If the buffer is now full, process the pieces.
+			// then "clear" the buffer and loop again.
+			if buflen == bufSize {
+				pieces := utils.SegmentData(buf, pieceLen)
+				for _, piece := range pieces {
+					pieceHash := utils.SHA1(piece)
+					pieceHashes.WriteString(pieceHash)
+				}
+				buflen = 0
+			}
+		}
+	}
+
+	// Process anything remaining in the buffer
+	pieces := utils.SegmentData(buf[:buflen], pieceLen)
+	for _, piece := range pieces {
+		pieceHash := utils.SHA1(piece)
+		pieceHashes.WriteString(pieceHash)
+	}
+
+	return NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
+}
+
 func NewTorInfo(name string, pieceLen int64, hashes string, files []FileEntry) (*TorInfo, error) {
 
 	if len(hashes)%20 != 0 {
@@ -72,6 +149,7 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []FileEntry) (
 	}
 
 	length := int64(0)
+
 	for _, fentry := range files {
 		length += fentry.Length()
 	}
@@ -90,7 +168,7 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []FileEntry) (
 
 // FromDict creates and returns a new *TorInfo from the info dictionary of a
 // torrent file.
-func FromDict(info bencode.Dict) (*TorInfo, error) {
+func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 	fdata := TorInfo{}
 	var err error
 
@@ -118,7 +196,12 @@ func FromDict(info bencode.Dict) (*TorInfo, error) {
 	fdata.length, err = info.GetInt("length")
 	if err == nil {
 		fdata.isSingle = true
-		// TODO: Finish
+
+		fentry := MakeFileEntry(fdata.Name(), fdata.Length())
+		localPath := path.Join(workingDir, fentry.TorPath())
+		fentry.SetLocalPath(localPath)
+		fdata.files = []FileEntry{fentry}
+
 	} else {
 		fdata.isSingle = false
 
@@ -210,14 +293,25 @@ func (ti *TorInfo) Bencode() bencode.Dict {
 	d["piece length"] = ti.PieceLen()
 	d["pieces"] = ti.Hashes()
 
+	// This is present in transmission torrents, so for now we will keep
+	// this in here for testing purposes (comparing known vs computed
+	// infohashes
+	d["private"] = int64(0)
+
 	if ti.IsSingle() {
 		d["length"] = ti.Length()
 	} else {
 		list := make(bencode.List, 0, len(ti.Files()))
 		for _, fentry := range ti.Files() {
+			pathTokens := strings.Split(fentry.TorPath(), "/")
+			pathList := make(bencode.List, 0, len(pathTokens))
+			for _, pathToken := range pathTokens {
+				pathList = append(pathList, pathToken)
+			}
+
 			fdict := make(bencode.Dict)
 			fdict["length"] = fentry.Length()
-			fdict["path"] = fentry.TorPath()
+			fdict["path"] = pathList
 			list = append(list, fdict)
 		}
 		d["files"] = list

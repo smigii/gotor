@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -50,86 +49,13 @@ func (tor *Torrent) FileHandler() fileio.FileHandler {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewTorrent(paths []string, workingDir string, name string, announce string, pieceLen int64) (*Torrent, error) {
-
-	fentries := make([]fileio.FileEntry, 0, len(paths))
-
-	const mib = 1048576
-	const maxBuf = 10 * mib
-
-	npieces := maxBuf / pieceLen
-	bufSize := npieces * pieceLen
-
-	buf := make([]byte, bufSize, bufSize)
-	buflen := int64(0)
-	pieceHashes := strings.Builder{}
-	nPieces := int64(0)
-
-	for _, fpath := range paths {
-
-		fptr, e := os.Open(fpath)
-		if e != nil {
-			return nil, e
-		}
-
-		stat, e := fptr.Stat()
-		if e != nil {
-			return nil, e
-		}
-
-		fentries = append(fentries, fileio.MakeFileEntry(fpath, stat.Size()))
-
-		for {
-			// Fill buffer with data
-			n, e := fptr.Read(buf[buflen:])
-			if e != nil {
-				if e != io.EOF {
-					return nil, e
-				}
-				// If we reached end of file, break and start processing
-				// next file.
-				break
-			}
-			buflen += int64(n)
-
-			// If the buffer is now full, process the pieces.
-			// then "clear" the buffer and loop again.
-			if buflen == bufSize {
-				pieces := utils.SegmentData(buf, pieceLen)
-				for _, piece := range pieces {
-					pieceHash := utils.SHA1(piece)
-					pieceHashes.WriteString(pieceHash)
-					nPieces++
-				}
-				buflen = 0
-			}
-		}
-	}
-
-	// Process anything remaining in the buffer
-	pieces := utils.SegmentData(buf[:buflen], pieceLen)
-	for _, piece := range pieces {
-		pieceHash := utils.SHA1(piece)
-		pieceHashes.WriteString(pieceHash)
-		nPieces++
-	}
-
+func NewTorrent(info *fileio.TorInfo, announce string) (*Torrent, error) {
+	// Make FileHandler
 	var fh fileio.FileHandler
-	if len(paths) == 1 {
-		meta, e := fileio.NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
-		if e != nil {
-			return nil, e
-		}
-
-		fh = fileio.NewSingleFileHandler(meta, workingDir)
+	if len(info.Files()) == 1 {
+		fh = fileio.NewSingleFileHandler(info)
 	} else {
-		// TODO: implement names and  stuff
-		meta, e := fileio.NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
-		if e != nil {
-			return nil, e
-		}
-
-		fh = fileio.NewMultiFileHandler(meta, workingDir)
+		fh = fileio.NewMultiFileHandler(info)
 	}
 
 	// Compute infohash
@@ -188,15 +114,15 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 	hasher.Write(enc)
 	tor.infohash = string(hasher.Sum(nil))
 
-	fmeta, err := fileio.FromDict(info)
+	torInfo, err := fileio.FromDict(info, workingDir)
 	if err != nil {
 		return nil, err
 	}
 
-	if fmeta.IsSingle() {
-		tor.fhandle = fileio.NewSingleFileHandler(fmeta, workingDir)
+	if torInfo.IsSingle() {
+		tor.fhandle = fileio.NewSingleFileHandler(torInfo)
 	} else {
-		tor.fhandle = fileio.NewMultiFileHandler(fmeta, workingDir)
+		tor.fhandle = fileio.NewMultiFileHandler(torInfo)
 	}
 
 	return &tor, nil

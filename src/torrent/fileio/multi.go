@@ -1,8 +1,6 @@
 package fileio
 
 import (
-	"path"
-
 	"gotor/bf"
 	"gotor/utils"
 )
@@ -109,12 +107,7 @@ func (mfh *MultiFileHandler) Close() error {
 	return mfh.rw.CloseAll()
 }
 
-func NewMultiFileHandler(info *TorInfo, workingDir string) *MultiFileHandler {
-	for _, fentry := range info.Files() {
-		localPath := path.Join(workingDir, fentry.TorPath())
-		fentry.SetLocalPath(localPath)
-	}
-
+func NewMultiFileHandler(info *TorInfo) *MultiFileHandler {
 	rw := NewReaderWriter(info.files)
 
 	flist := MultiFileHandler{

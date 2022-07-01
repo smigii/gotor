@@ -11,8 +11,8 @@ import (
 
 func TestFileSingle_Piece(t *testing.T) {
 
-	testMeta := TorInfo{}
-	testMeta.isSingle = true
+	testInfo := TorInfo{}
+	testInfo.isSingle = true
 
 	tests := []struct {
 		name     string
@@ -32,15 +32,16 @@ func TestFileSingle_Piece(t *testing.T) {
 
 			pieces := utils.SegmentData(tt.data, tt.piecelen)
 
-			testMeta.pieceLen = tt.piecelen
-			testMeta.name = tt.fpath
-			testMeta.numPieces = int64(len(pieces))
-			testMeta.length = int64(len(tt.data))
+			testInfo.pieceLen = tt.piecelen
+			testInfo.name = tt.fpath
+			testInfo.numPieces = int64(len(pieces))
+			testInfo.length = int64(len(tt.data))
+			testInfo.files = []FileEntry{MakeFileEntry(tt.fpath, int64(len(tt.data)))}
 
 			e := utils.WriteTestFile(tt.fpath, tt.data)
 			utils.CheckFatal(t, e)
 
-			sfh := NewSingleFileHandler(&testMeta, ".")
+			sfh := NewSingleFileHandler(&testInfo)
 			e = sfh.OCAT()
 			defer func() {
 				err := sfh.Close()
@@ -92,11 +93,11 @@ func TestFileSingle_Write(t *testing.T) {
 				hashes:    hashes.String(),
 				numPieces: int64(len(pieces)),
 				length:    int64(len(tt.data)),
-				files:     nil,
+				files:     []FileEntry{MakeFileEntry(tt.fpath, int64(len(tt.data)))},
 				isSingle:  true,
 			}
 
-			sfh := NewSingleFileHandler(&testMeta, ".")
+			sfh := NewSingleFileHandler(&testMeta)
 			e := sfh.OCAT()
 			defer func() {
 				err := sfh.Close()

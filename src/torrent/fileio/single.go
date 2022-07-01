@@ -3,7 +3,6 @@ package fileio
 import (
 	"fmt"
 	"io"
-	"path"
 
 	"gotor/bf"
 	"gotor/utils"
@@ -26,17 +25,12 @@ type SingleFileHandler struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewSingleFileHandler(info *TorInfo, workingDir string) *SingleFileHandler {
-	fentry := MakeFileEntry(info.Name(), info.Length())
-
-	localPath := path.Join(workingDir, info.Name())
-	fentry.SetLocalPath(localPath)
-
-	rw := NewReaderWriter([]FileEntry{fentry})
+func NewSingleFileHandler(info *TorInfo) *SingleFileHandler {
+	rw := NewReaderWriter(info.Files())
 
 	return &SingleFileHandler{
 		info:   info,
-		fentry: &fentry,
+		fentry: &info.Files()[0],
 		rw:     rw,
 		bf:     bf.NewBitfield(info.NumPieces()),
 	}
