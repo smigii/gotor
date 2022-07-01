@@ -23,6 +23,11 @@ type FileHandler interface {
 	// Returns the number of bytes read.
 	Piece(index int64, buf []byte) (int64, error)
 
+	// Pieces reads all pieces in the range [start, to) into the byte slice
+	// buf. This provides a way of nicely reading in large chunks of data
+	// for the Validate() function, rather than reading one piece at a time.
+	//Pieces(startIdx int64, toIdx int64, buf []byte) error
+
 	// Write writes the given data to the file(s) corresponding to piece index.
 	// It will only write data if the SHA1 hash of the data matches the hash
 	// given in the info's hash string. If it does not match, a HashError will

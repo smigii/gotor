@@ -1,7 +1,6 @@
 package torrent
 
 import (
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -92,9 +91,7 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 
 	dict, ok := d.(bencode.Dict)
 	if !ok {
-		return nil, &TorError{
-			msg: "decoded bencoding is not a dictionary",
-		}
+		return nil, &TorError{msg: "decoded bencoding is not a dictionary"}
 	}
 
 	tor.announce, err = dict.GetString("announce")
@@ -107,12 +104,8 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 		return nil, err
 	}
 
-	// TODO: Read info dictionary manually for SHA1
-	// This is rather wasteful
-	hasher := sha1.New()
 	enc, _ := bencode.Encode(info)
-	hasher.Write(enc)
-	tor.infohash = string(hasher.Sum(nil))
+	tor.infohash = utils.SHA1(enc)
 
 	torInfo, err := fileio.FromDict(info, workingDir)
 	if err != nil {
@@ -132,22 +125,22 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 // MISC =======================================================================
 
 func (tor *Torrent) String() string {
-	meta := tor.fhandle.TorInfo()
+	info := tor.fhandle.TorInfo()
 	strb := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
 
 	strb.WriteString("Torrent Info:\n")
-	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", meta.Name()))
+	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", info.Name()))
 	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
-	plen, units := utils.Bytes4Humans(meta.PieceLen())
-	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", meta.NumPieces(), plen, units))
-	bsize, units := utils.Bytes4Humans(meta.Length())
+	plen, units := utils.Bytes4Humans(info.PieceLen())
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", info.NumPieces(), plen, units))
+	bsize, units := utils.Bytes4Humans(info.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
-	if !meta.IsSingle() {
+	if !info.IsSingle() {
 		strb.WriteString("\nFiles:\n")
-		for _, fe := range meta.Files() {
+		for _, fe := range info.Files() {
 			strb.WriteString(fe.TorPath())
 			strb.WriteByte('\n')
 		}
