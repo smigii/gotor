@@ -1,6 +1,8 @@
 package fileio
 
 import (
+	"path"
+
 	"gotor/bf"
 	"gotor/utils"
 )
@@ -48,7 +50,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		}
 
 		subpiece := buf[off : off+pInfo.ReadAmnt]
-		_, e = mfh.rw.Read(fe.torPath, pInfo.SeekAmnt, subpiece)
+		_, e = mfh.rw.Read(fe.LocalPath(), pInfo.SeekAmnt, subpiece)
 		if e != nil {
 			return 0, e
 		}
@@ -79,7 +81,7 @@ func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 		}
 
 		subpiece := data[off : off+pInfo.ReadAmnt]
-		e = mfh.rw.Write(fe.TorPath(), pInfo.SeekAmnt, subpiece)
+		e = mfh.rw.Write(fe.LocalPath(), pInfo.SeekAmnt, subpiece)
 		if e != nil {
 			return e
 		}
@@ -107,7 +109,12 @@ func (mfh *MultiFileHandler) Close() error {
 	return mfh.rw.CloseAll()
 }
 
-func NewMultiFileHandler(info *TorInfo) *MultiFileHandler {
+func NewMultiFileHandler(info *TorInfo, workingDir string) *MultiFileHandler {
+	for _, fentry := range info.Files() {
+		localPath := path.Join(workingDir, fentry.TorPath())
+		fentry.SetLocalPath(localPath)
+	}
+
 	rw := NewReaderWriter(info.files)
 
 	flist := MultiFileHandler{

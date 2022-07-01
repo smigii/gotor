@@ -13,10 +13,10 @@ const (
 )
 
 type Opts struct {
-	input  *string // Torrent path
-	output *string // Output path
-	port   *uint   // Listen port
-	cmd    *string // What do?
+	input *string // Input torrent path
+	wd    *string // Working directory path
+	port  *uint   // Listen port
+	cmd   *string // What do?
 }
 
 // Singleton
@@ -32,7 +32,7 @@ func GetOpts() *Opts {
 func initOpts() *Opts {
 	opts = &Opts{}
 	opts.input = flag.String("i", "", "Path to .torrent file")
-	opts.output = flag.String("o", ".", "Output path")
+	opts.wd = flag.String("w", "", "Working directory")
 	opts.port = flag.Uint("p", 60666, "Port to listen on")
 	opts.cmd = flag.String("cmd", StartSwarm, "Command")
 
@@ -51,6 +51,10 @@ func (o *Opts) Validate() error {
 		return errors.New("missing argument 'input'")
 	}
 
+	if o.Input() == "" {
+		return errors.New("missing argument 'working directory'")
+	}
+
 	switch *o.cmd {
 	case StartSwarm, TorInfo:
 		break
@@ -64,8 +68,8 @@ func (o *Opts) Input() string {
 	return *o.input
 }
 
-func (o *Opts) Output() string {
-	return *o.output
+func (o *Opts) WorkingDir() string {
+	return *o.wd
 }
 
 func (o *Opts) Port() uint16 {

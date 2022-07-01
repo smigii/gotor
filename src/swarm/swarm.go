@@ -38,7 +38,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 
 	// Read torrent file
 	log.Printf("reading torrent file [%v]\n", opts.Input())
-	swarm.Tor, err = torrent.FromTorrentFile(opts.Input())
+	swarm.Tor, err = torrent.FromTorrentFile(opts.Input(), opts.WorkingDir())
 	if err != nil {
 		return nil, err
 	}

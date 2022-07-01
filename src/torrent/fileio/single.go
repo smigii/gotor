@@ -3,6 +3,7 @@ package fileio
 import (
 	"fmt"
 	"io"
+	"path"
 
 	"gotor/bf"
 	"gotor/utils"
@@ -15,24 +16,29 @@ import (
 // than MultiFileHandler since it doesn't need to find out which files are contained
 // in a given piece.
 type SingleFileHandler struct {
-	info  *TorInfo
-	entry *FileEntry
-	rw    *readerWriter
-	bf    *bf.Bitfield
+	info   *TorInfo
+	fentry *FileEntry
+	wd     string // Working directory
+	rw     *readerWriter
+	bf     *bf.Bitfield
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewSingleFileHandler(info *TorInfo) *SingleFileHandler {
+func NewSingleFileHandler(info *TorInfo, workingDir string) *SingleFileHandler {
 	fentry := MakeFileEntry(info.Name(), info.Length())
+
+	localPath := path.Join(workingDir, info.Name())
+	fentry.SetLocalPath(localPath)
+
 	rw := NewReaderWriter([]FileEntry{fentry})
 
 	return &SingleFileHandler{
-		info:  info,
-		rw:    rw,
-		entry: &fentry,
-		bf:    bf.NewBitfield(info.NumPieces()),
+		info:   info,
+		fentry: &fentry,
+		rw:     rw,
+		bf:     bf.NewBitfield(info.NumPieces()),
 	}
 }
 
@@ -59,7 +65,7 @@ func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		return 0, fmt.Errorf("buffer to small, need %v, got %v", readAmnt, len(buf))
 	}
 
-	_, e := sfh.rw.Read(sfh.entry.torPath, seekAmnt, buf[:readAmnt])
+	_, e := sfh.rw.Read(sfh.fentry.LocalPath(), seekAmnt, buf[:readAmnt])
 	return readAmnt, e
 }
 
@@ -78,7 +84,7 @@ func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
 
 	seekAmnt := index * info.pieceLen
 
-	e := sfh.rw.Write(sfh.entry.torPath, seekAmnt, data)
+	e := sfh.rw.Write(sfh.fentry.LocalPath(), seekAmnt, data)
 
 	return e
 }
@@ -96,8 +102,10 @@ func (sfh *SingleFileHandler) Validate() error {
 	seek := int64(0)
 	index := int64(0) // Piece index
 
+	readPath := sfh.fentry.LocalPath()
+
 	for {
-		n, e := sfh.rw.Read(info.Name(), seek, buf)
+		n, e := sfh.rw.Read(readPath, seek, buf)
 		if e == io.EOF {
 			break
 		}

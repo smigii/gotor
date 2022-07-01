@@ -34,32 +34,32 @@ type TorInfo struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (t *TorInfo) Name() string {
-	return t.name
+func (ti *TorInfo) Name() string {
+	return ti.name
 }
 
-func (t *TorInfo) PieceLen() int64 {
-	return t.pieceLen
+func (ti *TorInfo) PieceLen() int64 {
+	return ti.pieceLen
 }
 
-func (t *TorInfo) PieceHashes() string {
-	return t.hashes
+func (ti *TorInfo) Hashes() string {
+	return ti.hashes
 }
 
-func (t *TorInfo) NumPieces() int64 {
-	return t.numPieces
+func (ti *TorInfo) NumPieces() int64 {
+	return ti.numPieces
 }
 
-func (t *TorInfo) Length() int64 {
-	return t.length
+func (ti *TorInfo) Length() int64 {
+	return ti.length
 }
 
-func (t *TorInfo) Files() []FileEntry {
-	return t.files
+func (ti *TorInfo) Files() []FileEntry {
+	return ti.files
 }
 
-func (t *TorInfo) IsSingle() bool {
-	return t.isSingle
+func (ti *TorInfo) IsSingle() bool {
+	return ti.isSingle
 }
 
 // ============================================================================
@@ -143,15 +143,15 @@ func FromDict(info bencode.Dict) (*TorInfo, error) {
 // ============================================================================
 // FUNC =======================================================================
 
-func (t *TorInfo) PieceHash(idx int64) (string, error) {
-	if idx >= t.numPieces {
+func (ti *TorInfo) PieceHash(idx int64) (string, error) {
+	if idx >= ti.numPieces {
 		return "", &FileMetaError{
-			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, t.numPieces-1),
+			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, ti.numPieces-1),
 		}
 	}
 
 	offset := idx * 20
-	return t.hashes[offset : offset+20], nil
+	return ti.hashes[offset : offset+20], nil
 }
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded
@@ -201,4 +201,27 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, erro
 	}
 
 	return sfl, nil
+}
+
+func (ti *TorInfo) Bencode() bencode.Dict {
+	d := make(bencode.Dict)
+
+	d["name"] = ti.Name()
+	d["piece length"] = ti.PieceLen()
+	d["pieces"] = ti.Hashes()
+
+	if ti.IsSingle() {
+		d["length"] = ti.Length()
+	} else {
+		list := make(bencode.List, 0, len(ti.Files()))
+		for _, fentry := range ti.Files() {
+			fdict := make(bencode.Dict)
+			fdict["length"] = fentry.Length()
+			fdict["path"] = fentry.TorPath()
+			list = append(list, fdict)
+		}
+		d["files"] = list
+	}
+
+	return d
 }

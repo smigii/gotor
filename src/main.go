@@ -42,7 +42,7 @@ func CmdSwarm(opts *utils.Opts) {
 }
 
 func CmdTorInfo(opts *utils.Opts) {
-	tor, e := torrent.FromTorrentFile(opts.Input())
+	tor, e := torrent.FromTorrentFile(opts.Input(), opts.WorkingDir())
 	if e != nil {
 		log.Fatal(e)
 	}

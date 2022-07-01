@@ -67,7 +67,7 @@ func TestNewMultiFileHandler(t *testing.T) {
 			testFileMeta.pieceLen = tt.pieceLen
 			testFileMeta.numPieces = tt.numPieces
 
-			mfh := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta, ".")
 
 			e := mfh.OCAT()
 			defer func() {
@@ -137,7 +137,7 @@ func TestGetFiles(t *testing.T) {
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
 
-			mfh := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta, ".")
 			e := mfh.OCAT()
 			defer func() {
 				err := mfh.Close()
@@ -230,7 +230,7 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
 
-			mfh := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta, ".")
 			e := mfh.OCAT()
 			utils.CheckError(t, e)
 			defer func() {
@@ -329,7 +329,7 @@ func TestMultiFileHandler_Write(t *testing.T) {
 			testFileMeta.numPieces = int64(len(pieces))
 			testFileMeta.name = "testwrite"
 
-			mfh := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta, ".")
 			e := mfh.OCAT()
 			utils.CheckError(t, e)
 			defer func() {

@@ -50,7 +50,7 @@ func (tor *Torrent) FileHandler() fileio.FileHandler {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewTorrent(paths []string, announce string, pieceLen int64) (*Torrent, error) {
+func NewTorrent(paths []string, workingDir string, name string, announce string, pieceLen int64) (*Torrent, error) {
 
 	fentries := make([]fileio.FileEntry, 0, len(paths))
 
@@ -116,24 +116,32 @@ func NewTorrent(paths []string, announce string, pieceLen int64) (*Torrent, erro
 
 	var fh fileio.FileHandler
 	if len(paths) == 1 {
-		meta, e := fileio.NewTorInfo(paths[0], pieceLen, pieceHashes.String(), fentries)
+		meta, e := fileio.NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
 		if e != nil {
 			return nil, e
 		}
 
-		fh = fileio.NewSingleFileHandler(meta)
+		fh = fileio.NewSingleFileHandler(meta, workingDir)
 	} else {
 		// TODO: implement names and  stuff
-		meta, e := fileio.NewTorInfo("TBI", pieceLen, pieceHashes.String(), fentries)
+		meta, e := fileio.NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
 		if e != nil {
 			return nil, e
 		}
 
-		fh = fileio.NewMultiFileHandler(meta)
+		fh = fileio.NewMultiFileHandler(meta, workingDir)
 	}
 
+	// Compute infohash
+	bencoded := fh.TorInfo().Bencode()
+	encoded, err := bencode.Encode(bencoded)
+	if err != nil {
+		return nil, err
+	}
+	infohash := utils.SHA1(encoded)
+
 	return &Torrent{
-		infohash: "",
+		infohash: infohash,
 		announce: announce,
 		fhandle:  fh,
 	}, nil
@@ -141,7 +149,7 @@ func NewTorrent(paths []string, announce string, pieceLen int64) (*Torrent, erro
 
 // FromTorrentFile reads the torrent file specified by torpath and creates a
 // new Torrent object.
-func FromTorrentFile(torpath string) (*Torrent, error) {
+func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 
 	tor := Torrent{}
 	var err error
@@ -186,9 +194,9 @@ func FromTorrentFile(torpath string) (*Torrent, error) {
 	}
 
 	if fmeta.IsSingle() {
-		tor.fhandle = fileio.NewSingleFileHandler(fmeta)
+		tor.fhandle = fileio.NewSingleFileHandler(fmeta, workingDir)
 	} else {
-		tor.fhandle = fileio.NewMultiFileHandler(fmeta)
+		tor.fhandle = fileio.NewMultiFileHandler(fmeta, workingDir)
 	}
 
 	return &tor, nil
