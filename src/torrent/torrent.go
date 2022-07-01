@@ -89,7 +89,7 @@ func NewTorrent(torpath string) (*Torrent, error) {
 	hasher.Write(enc)
 	tor.infohash = string(hasher.Sum(nil))
 
-	fmeta, err := fileio.NewFileMeta(info)
+	fmeta, err := fileio.FromDict(info)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func CreateTorrent(paths []string, announce string, pieceLen int64) (*Torrent, e
 
 	var fh fileio.FileHandler
 	if len(paths) == 1 {
-		meta, e := fileio.CreateFileMeta(paths[0], pieceLen, pieceHashes.String(), fentries)
+		meta, e := fileio.NewTorInfo(paths[0], pieceLen, pieceHashes.String(), fentries)
 		if e != nil {
 			return nil, e
 		}
@@ -209,7 +209,7 @@ func CreateTorrent(paths []string, announce string, pieceLen int64) (*Torrent, e
 		fh = fileio.NewSingleFileHandler(meta)
 	} else {
 		// TODO: implement names and  stuff
-		meta, e := fileio.CreateFileMeta("TBI", pieceLen, pieceHashes.String(), fentries)
+		meta, e := fileio.NewTorInfo("TBI", pieceLen, pieceHashes.String(), fentries)
 		if e != nil {
 			return nil, e
 		}

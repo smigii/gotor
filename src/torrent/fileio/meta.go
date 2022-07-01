@@ -22,13 +22,13 @@ func (fme *FileMetaError) Error() string {
 
 // TorInfo holds the metadata found in a torrent's info dictionary.
 type TorInfo struct {
-	name      string
-	pieceLen  int64
-	pieces    string
+	name      string `info:"name"`
+	pieceLen  int64  `info:"piece length"`
+	hashes    string `info:"pieces"`
 	numPieces int64
-	length    int64
-	files     []FileEntry
-	isSingle  bool // Is this a single-file or multi-file torrent?
+	length    int64       `info:"length"`
+	files     []FileEntry `info:"files"`
+	isSingle  bool        // Is this a single-file or multi-file torrent?
 }
 
 // ============================================================================
@@ -43,7 +43,7 @@ func (t *TorInfo) PieceLen() int64 {
 }
 
 func (t *TorInfo) PieceHashes() string {
-	return t.pieces
+	return t.hashes
 }
 
 func (t *TorInfo) NumPieces() int64 {
@@ -65,7 +65,7 @@ func (t *TorInfo) IsSingle() bool {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntry) (*TorInfo, error) {
+func NewTorInfo(name string, pieceLen int64, hashes string, files []FileEntry) (*TorInfo, error) {
 
 	if len(hashes)%20 != 0 {
 		return nil, errors.New("hashes must be multiple of 20")
@@ -79,7 +79,7 @@ func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntr
 	return &TorInfo{
 		name:      name,
 		pieceLen:  pieceLen,
-		pieces:    hashes,
+		hashes:    hashes,
 		numPieces: int64(len(hashes) / 20),
 		length:    length,
 		files:     files,
@@ -88,7 +88,9 @@ func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntr
 
 }
 
-func NewFileMeta(info bencode.Dict) (*TorInfo, error) {
+// FromDict creates and returns a new *TorInfo from the info dictionary of a
+// torrent file.
+func FromDict(info bencode.Dict) (*TorInfo, error) {
 	fdata := TorInfo{}
 	var err error
 
@@ -102,16 +104,16 @@ func NewFileMeta(info bencode.Dict) (*TorInfo, error) {
 		return nil, err
 	}
 
-	fdata.pieces, err = info.GetString("pieces")
+	fdata.hashes, err = info.GetString("pieces")
 	if err != nil {
 		return nil, err
 	}
-	if len(fdata.pieces)%20 != 0 {
+	if len(fdata.hashes)%20 != 0 {
 		return nil, &FileMetaError{
-			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(fdata.pieces)),
+			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(fdata.hashes)),
 		}
 	}
-	fdata.numPieces = int64(len(fdata.pieces) / 20)
+	fdata.numPieces = int64(len(fdata.hashes) / 20)
 
 	fdata.length, err = info.GetInt("length")
 	if err == nil {
@@ -149,7 +151,7 @@ func (t *TorInfo) PieceHash(idx int64) (string, error) {
 	}
 
 	offset := idx * 20
-	return t.pieces[offset : offset+20], nil
+	return t.hashes[offset : offset+20], nil
 }
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded

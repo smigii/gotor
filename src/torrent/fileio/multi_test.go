@@ -321,7 +321,7 @@ func TestMultiFileHandler_Write(t *testing.T) {
 			}
 
 			// Create MultiFileHandler
-			testFileMeta.pieces = hashes.String()
+			testFileMeta.hashes = hashes.String()
 			testFileMeta.files = fileEntries
 			testFileMeta.pieceLen = tt.piecelen
 			testFileMeta.length = int64(len(data))

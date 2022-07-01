@@ -89,7 +89,7 @@ func TestFileSingle_Write(t *testing.T) {
 			testMeta := TorInfo{
 				name:      tt.fpath,
 				pieceLen:  tt.pieceLen,
-				pieces:    hashes.String(),
+				hashes:    hashes.String(),
 				numPieces: int64(len(pieces)),
 				length:    int64(len(tt.data)),
 				files:     nil,
