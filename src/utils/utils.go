@@ -113,3 +113,11 @@ func SHA1(data []byte) string {
 	hasher.Write(data)
 	return string(hasher.Sum(nil))
 }
+
+func HashSlices(pieces [][]byte) string {
+	hashBuilder := strings.Builder{}
+	for _, p := range pieces {
+		hashBuilder.WriteString(SHA1(p))
+	}
+	return hashBuilder.String()
+}

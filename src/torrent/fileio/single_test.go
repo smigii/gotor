@@ -3,16 +3,15 @@ package fileio
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
 
+	fentry2 "gotor/torrent/filesd"
+	"gotor/torrent/info"
 	"gotor/utils"
+	"gotor/utils/test"
 )
 
 func TestFileSingle_Piece(t *testing.T) {
-
-	testInfo := TorInfo{}
-	testInfo.isSingle = true
 
 	tests := []struct {
 		name     string
@@ -25,34 +24,31 @@ func TestFileSingle_Piece(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			e := test.WriteTestFile(tt.fpath, tt.data)
 			defer func() {
-				err := utils.CleanUpTestFile(tt.fpath)
-				utils.CheckError(t, err)
+				err := test.CleanUpTestFile(tt.fpath)
+				test.CheckError(t, err)
 			}()
+			test.CheckFatal(t, e)
 
 			pieces := utils.SegmentData(tt.data, tt.piecelen)
+			hashes := utils.HashSlices(pieces)
 
-			testInfo.pieceLen = tt.piecelen
-			testInfo.name = tt.fpath
-			testInfo.numPieces = int64(len(pieces))
-			testInfo.length = int64(len(tt.data))
-			testInfo.files = []FileEntry{MakeFileEntry(tt.fpath, int64(len(tt.data)))}
+			fentry := []fentry2.Entry{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
+			testInfo, e := info.NewTorInfo("test", tt.piecelen, hashes, fentry)
 
-			e := utils.WriteTestFile(tt.fpath, tt.data)
-			utils.CheckFatal(t, e)
-
-			sfh := NewSingleFileHandler(&testInfo)
+			sfh := NewSingleFileHandler(testInfo)
 			e = sfh.OCAT()
 			defer func() {
 				err := sfh.Close()
-				utils.CheckError(t, err)
+				test.CheckError(t, err)
 			}()
-			utils.CheckError(t, e)
+			test.CheckError(t, e)
 
 			got := make([]byte, tt.piecelen, tt.piecelen)
 			for i := 0; i < len(pieces); i++ {
 				n, err := sfh.Piece(int64(i), got)
-				utils.CheckError(t, err)
+				test.CheckError(t, err)
 
 				if !bytes.Equal(got[:n], pieces[i]) {
 					t.Errorf("Piece(%v)\n Got: %v\nWant: %v", i, got, pieces[i])
@@ -77,41 +73,31 @@ func TestFileSingle_Write(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			defer func() {
-				e := utils.CleanUpTestFile(tt.fpath)
-				utils.CheckError(t, e)
+				e := test.CleanUpTestFile(tt.fpath)
+				test.CheckError(t, e)
 			}()
 
 			pieces := utils.SegmentData(tt.data, tt.pieceLen)
-			hashes := strings.Builder{}
-			for _, p := range pieces {
-				hashes.WriteString(utils.SHA1(p))
-			}
+			hashes := utils.HashSlices(pieces)
 
-			testMeta := TorInfo{
-				name:      tt.fpath,
-				pieceLen:  tt.pieceLen,
-				hashes:    hashes.String(),
-				numPieces: int64(len(pieces)),
-				length:    int64(len(tt.data)),
-				files:     []FileEntry{MakeFileEntry(tt.fpath, int64(len(tt.data)))},
-				isSingle:  true,
-			}
+			fentry := []fentry2.Entry{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
+			testInfo, e := info.NewTorInfo("test", tt.pieceLen, hashes, fentry)
 
-			sfh := NewSingleFileHandler(&testMeta)
-			e := sfh.OCAT()
+			sfh := NewSingleFileHandler(testInfo)
+			e = sfh.OCAT()
 			defer func() {
 				err := sfh.Close()
-				utils.CheckError(t, err)
+				test.CheckError(t, err)
 			}()
-			utils.CheckError(t, e)
+			test.CheckError(t, e)
 
 			for i := 0; i < len(pieces); i++ {
 				e = sfh.Write(int64(i), pieces[i])
-				utils.CheckError(t, e)
+				test.CheckError(t, e)
 			}
 
 			fdata, e := os.ReadFile(tt.fpath)
-			utils.CheckError(t, e)
+			test.CheckError(t, e)
 
 			if !bytes.Equal(tt.data, fdata) {
 				t.Errorf("Error writing data\nWant: %v\nRead: %v", tt.data, fdata)

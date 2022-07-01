@@ -2,6 +2,8 @@ package utils
 
 import (
 	"testing"
+
+	"gotor/utils/test"
 )
 
 func TestWriteEmptyFile(t *testing.T) {
@@ -21,28 +23,28 @@ func TestWriteEmptyFile(t *testing.T) {
 
 			f, e := CreateZeroFilledFile(tt.fpath, tt.len)
 			if e != nil {
-				CleanUpTestFile(tt.fpath)
+				test.CleanUpTestFile(tt.fpath)
 				t.Error(e)
 			}
 
 			fi, e := f.Stat()
 			if e != nil {
-				CleanUpTestFile(tt.fpath)
+				test.CleanUpTestFile(tt.fpath)
 				t.Error(e)
 			}
 
 			if fi.Size() != tt.len {
-				CleanUpTestFile(tt.fpath)
+				test.CleanUpTestFile(tt.fpath)
 				t.Errorf("New file size is %v, expected %v", fi.Size(), tt.len)
 			}
 
 			e = f.Close()
 			if e != nil {
-				CleanUpTestFile(tt.fpath)
+				test.CleanUpTestFile(tt.fpath)
 				t.Error(e)
 			}
 
-			CleanUpTestFile(tt.fpath)
+			test.CleanUpTestFile(tt.fpath)
 		})
 	}
 }

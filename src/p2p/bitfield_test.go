@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"gotor/utils"
+	"gotor/utils/test"
 )
 
 func TestBitfieldDecode(t *testing.T) {
@@ -37,7 +37,7 @@ func TestBitfieldDecode(t *testing.T) {
 					t.Error("expected error")
 				}
 			} else {
-				utils.CheckError(t, err)
+				test.CheckError(t, err)
 				bfmsg, ok := msg.(*MsgBitfield)
 				if !ok {
 					t.Error("couldn't convert to MsgBitfield")
@@ -67,7 +67,7 @@ func TestBitfieldEncode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			want := append(tt.base, tt.bf...)
 			msg, err := DecodeMsgBitfield(want, uint32(len(tt.bf))+1)
-			utils.CheckError(t, err)
+			test.CheckError(t, err)
 			enc := msg.Encode()
 			if !bytes.Equal(want, enc) {
 				t.Errorf("\nwant %v\n got %v", want, enc)

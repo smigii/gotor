@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"gotor/torrent/filesd"
 	"gotor/utils"
 )
 
@@ -35,14 +36,14 @@ func (pe *PathError) Error() string {
 // STRUCTS ====================================================================
 
 type readerWriter struct {
-	files []FileEntry
+	files []filesd.Entry
 	ptrs  map[string]*os.File
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewReaderWriter(files []FileEntry) *readerWriter {
+func NewReaderWriter(files []filesd.Entry) *readerWriter {
 	rw := readerWriter{
 		files: files,
 		ptrs:  make(map[string]*os.File),
@@ -90,14 +91,14 @@ func (rw *readerWriter) OCAT() error {
 	errors := make([]FileErrorEntry, 0, 4)
 
 	for _, fentry := range rw.files {
-		f, e := utils.OCAT(fentry.torPath, fentry.length)
+		f, e := utils.OCAT(fentry.LocalPath(), fentry.Length())
 		if e != nil {
 			errors = append(errors, FileErrorEntry{
-				fpath: fentry.torPath,
+				fpath: fentry.LocalPath(),
 				err:   e,
 			})
 		} else {
-			rw.ptrs[fentry.torPath] = f
+			rw.ptrs[fentry.LocalPath()] = f
 		}
 	}
 

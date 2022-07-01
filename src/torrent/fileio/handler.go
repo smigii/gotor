@@ -2,6 +2,7 @@ package fileio
 
 import (
 	"gotor/bf"
+	"gotor/torrent/info"
 	"gotor/utils"
 )
 
@@ -38,7 +39,7 @@ type FileHandler interface {
 	// check the pieces and their hashes, updating the results in its bitfield.
 	Validate() error
 
-	TorInfo() *TorInfo
+	TorInfo() *info.TorInfo
 
 	Bitfield() *bf.Bitfield
 
@@ -58,7 +59,7 @@ func ValidateHandler(fh FileHandler) error {
 	buf := make([]byte, fh.TorInfo().PieceLen(), fh.TorInfo().PieceLen())
 
 	var i int64
-	for i = 0; i < fh.TorInfo().numPieces; i++ {
+	for i = 0; i < fh.TorInfo().NumPieces(); i++ {
 
 		knownHash, e := fh.TorInfo().PieceHash(i)
 		if e != nil {

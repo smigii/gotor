@@ -1,41 +1,28 @@
-package fileio
+package filesd
 
 import (
 	"fmt"
-	"strings"
-
-	"gotor/bencode"
 )
 
 // ============================================================================
 // STRUCTS ====================================================================
 
-// FileEntry represents an entry in a torrent's info["files"] list, which holds
-// dictionaries of {length, path} for each file. FileEntry also includes the
-// localPath field, which is can be changed by the user to change the location
-// or name of the file.
-type FileEntry struct {
-	length    int64
-	torPath   string // File path as defined in torrent file
-	localPath string // File path as defined by user (optional)
-}
-
-// FileEntryWrapper wraps the FileEntry struct with the starting and ending
+// EntryWrapper wraps the Entry struct with the starting and ending
 // indices and byte-offsets for a file. This is used by MultiFileHandler
 // structs to find which files are related to which pieces.
-type FileEntryWrapper struct {
-	FileEntry
+type EntryWrapper struct {
+	Entry
 	startPieceIdx int64 // Starting piece index
 	endPieceIdx   int64 // Last piece index (inclusive)
 	startPieceOff int64 // Offset from start of startPieceIdx
 	endPieceOff   int64 // Offset from start of endPieceIdx (inclusive)
 }
 
-// pieceInfo holds the SEEK_SET seek offset and amount to read for a given
+// PieceInfo holds the SEEK_SET seek offset and amount to read for a given
 // piece index. For torrent [A|A|A] [A|B|B] [B|B|B] [B|C|C], PieceInfo(1) on
 // file A would give {3, 1}, as we need to seek 3 bytes, and only 1 byte of the
 // piece belongs to A.
-type pieceInfo struct {
+type PieceInfo struct {
 	SeekAmnt int64
 	ReadAmnt int64
 }
@@ -43,68 +30,37 @@ type pieceInfo struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (fe *FileEntry) Length() int64 {
-	return fe.length
-}
-
-func (fe *FileEntry) TorPath() string {
-	return fe.torPath
-}
-
-func (fe *FileEntry) LocalPath() string {
-	return fe.localPath
-}
-
-func (fe *FileEntry) SetLocalPath(newPath string) {
-	fe.localPath = newPath
-}
-
-// ----------------------------------------------------------------------------
-
-func (few *FileEntryWrapper) StartPiece() int64 {
+func (few *EntryWrapper) StartPiece() int64 {
 	return few.startPieceIdx
 }
 
-func (few *FileEntryWrapper) EndPiece() int64 {
+func (few *EntryWrapper) EndPiece() int64 {
 	return few.endPieceIdx
 }
 
-func (few *FileEntryWrapper) StartPieceOff() int64 {
+func (few *EntryWrapper) StartPieceOff() int64 {
 	return few.startPieceOff
 }
 
-func (few *FileEntryWrapper) EndPieceOff() int64 {
+func (few *EntryWrapper) EndPieceOff() int64 {
 	return few.endPieceOff
 }
 
 // ============================================================================
 // FUNK =======================================================================
 
-func MakeFileEntry(torPath string, length int64) FileEntry {
-	return FileEntry{
-		length:    length,
-		torPath:   torPath,
-		localPath: torPath,
+func MakeEntryWrapper(en Entry, startIdx, endIdx, startOff, endOff int64) EntryWrapper {
+	return EntryWrapper{
+		Entry:         en,
+		startPieceIdx: startIdx,
+		endPieceIdx:   endIdx,
+		startPieceOff: startOff,
+		endPieceOff:   endOff,
 	}
 }
 
-func (fe *FileEntry) Bencode() bencode.Dict {
-	pathTokens := strings.Split(fe.TorPath(), "/")
-	pathList := make(bencode.List, 0, len(pathTokens))
-
-	for _, pathToken := range pathTokens {
-		pathList = append(pathList, pathToken)
-	}
-
-	d := make(bencode.Dict)
-	d["length"] = fe.Length()
-	d["path"] = pathList
-
-	return d
-}
-
-// PieceInfo calculates and returns pieceInfo struct for a given piece index.
-func (few *FileEntryWrapper) PieceInfo(index int64, pieceLen int64) (*pieceInfo, error) {
+// PieceInfo calculates and returns PieceInfo struct for a given piece index.
+func (few *EntryWrapper) PieceInfo(index int64, pieceLen int64) (*PieceInfo, error) {
 	/* ===================================================================
 
 	Consider the following,
@@ -161,7 +117,7 @@ func (few *FileEntryWrapper) PieceInfo(index int64, pieceLen int64) (*pieceInfo,
 		readAmnt = (few.endPieceOff - cursorOff) + 1
 	}
 
-	info := pieceInfo{
+	info := PieceInfo{
 		SeekAmnt: seekAmnt,
 		ReadAmnt: readAmnt,
 	}

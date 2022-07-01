@@ -2,6 +2,8 @@ package fileio
 
 import (
 	"gotor/bf"
+	"gotor/torrent/filesd"
+	"gotor/torrent/info"
 	"gotor/utils"
 )
 
@@ -9,8 +11,8 @@ import (
 // STRUCTS ====================================================================
 
 type MultiFileHandler struct {
-	files []FileEntryWrapper
-	info  *TorInfo
+	files []filesd.EntryWrapper
+	tinfo *info.TorInfo
 	rw    *readerWriter
 	bf    *bf.Bitfield
 }
@@ -18,12 +20,12 @@ type MultiFileHandler struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (mfh *MultiFileHandler) Files() []FileEntryWrapper {
+func (mfh *MultiFileHandler) Files() []filesd.EntryWrapper {
 	return mfh.files
 }
 
-func (mfh *MultiFileHandler) TorInfo() *TorInfo {
-	return mfh.info
+func (mfh *MultiFileHandler) TorInfo() *info.TorInfo {
+	return mfh.tinfo
 }
 
 func (mfh *MultiFileHandler) Bitfield() *bf.Bitfield {
@@ -38,7 +40,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 	off := int64(0)
 
 	for _, fe := range files {
-		pInfo, e := fe.PieceInfo(index, mfh.info.pieceLen)
+		pInfo, e := fe.PieceInfo(index, mfh.tinfo.PieceLen())
 		if e != nil {
 			return 0, e
 		}
@@ -61,7 +63,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 
 func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 
-	wantHash, e := mfh.info.PieceHash(index)
+	wantHash, e := mfh.tinfo.PieceHash(index)
 	if e != nil {
 		return e
 	}
@@ -73,7 +75,7 @@ func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 	off := int64(0)
 	files := mfh.GetFiles(index)
 	for _, fe := range files {
-		pInfo, e := fe.PieceInfo(index, mfh.info.pieceLen)
+		pInfo, e := fe.PieceInfo(index, mfh.tinfo.PieceLen())
 		if e != nil {
 			return e
 		}
@@ -107,69 +109,58 @@ func (mfh *MultiFileHandler) Close() error {
 	return mfh.rw.CloseAll()
 }
 
-func NewMultiFileHandler(info *TorInfo) *MultiFileHandler {
-	rw := NewReaderWriter(info.files)
+func NewMultiFileHandler(tinfo *info.TorInfo) *MultiFileHandler {
+	rw := NewReaderWriter(tinfo.Files())
 
-	flist := MultiFileHandler{
-		files: make([]FileEntryWrapper, 0, len(info.files)),
-		info:  info,
-		bf:    bf.NewBitfield(info.numPieces),
+	mfh := MultiFileHandler{
+		files: make([]filesd.EntryWrapper, 0, len(tinfo.Files())),
+		tinfo: tinfo,
+		bf:    bf.NewBitfield(tinfo.NumPieces()),
 		rw:    rw,
 	}
-
-	// This should be 0 by default, since multi-file torrents
-	// shouldn't have a "length" key in their info dictionary
-	info.length = 0
 
 	index := int64(0)  // Piece index
 	offset := int64(0) // Offset within index
 
-	for _, tfe := range info.files {
+	for _, tfe := range tinfo.Files() {
 
 		startPiece := index
 		startOff := offset
-		endPiece := index + ((tfe.length - 1) / info.pieceLen)
-		endOff := offset + ((tfe.length - 1) % info.pieceLen)
-		if endOff >= info.pieceLen {
-			endPiece += endOff / info.pieceLen
-			endOff %= info.pieceLen
+		endPiece := index + ((tfe.Length() - 1) / tinfo.PieceLen())
+		endOff := offset + ((tfe.Length() - 1) % tinfo.PieceLen())
+		if endOff >= tinfo.PieceLen() {
+			endPiece += endOff / tinfo.PieceLen()
+			endOff %= tinfo.PieceLen()
 		}
 
 		index = endPiece
 		offset = endOff + 1
-		if offset == info.pieceLen {
+		if offset == tinfo.PieceLen() {
 			index++
 			offset = 0
 		}
 
-		flist.info.length += tfe.length
-
-		flist.files = append(flist.files, FileEntryWrapper{
-			FileEntry:     tfe,
-			startPieceIdx: startPiece,
-			endPieceIdx:   endPiece,
-			startPieceOff: startOff,
-			endPieceOff:   endOff,
-		})
+		ew := filesd.MakeEntryWrapper(tfe, startPiece, endPiece, startOff, endOff)
+		mfh.files = append(mfh.files, ew)
 	}
 
-	return &flist
+	return &mfh
 }
 
 // GetFiles returns all files that are contained within the specified piece
 // index.
-func (mfh *MultiFileHandler) GetFiles(piece int64) []FileEntryWrapper {
+func (mfh *MultiFileHandler) GetFiles(piece int64) []filesd.EntryWrapper {
 
 	hit := false
 	startIdx := 0
 	n := 0
 
 	for i, fe := range mfh.Files() {
-		if fe.startPieceIdx > piece {
+		if fe.StartPiece() > piece {
 			break
 		}
 
-		if fe.startPieceIdx <= piece && fe.endPieceIdx >= piece {
+		if fe.StartPiece() <= piece && fe.EndPiece() >= piece {
 			if !hit {
 				startIdx = i
 				hit = true

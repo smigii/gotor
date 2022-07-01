@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"gotor/utils"
+	"gotor/utils/test"
 )
 
 func TestFromTorrentFile(t *testing.T) {
@@ -33,7 +33,7 @@ func TestFromTorrentFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			tor, err := FromTorrentFile(tt.path, ".")
-			utils.CheckError(t, err)
+			test.CheckError(t, err)
 
 			trueHashBytes, _ := hex.DecodeString(tt.infohash)
 			trueHashString := string(trueHashBytes)

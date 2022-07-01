@@ -2,9 +2,10 @@ package bencode
 
 import (
 	"bytes"
-	"gotor/utils"
 	"os"
 	"testing"
+
+	"gotor/utils/test"
 )
 
 func TestBencode(t *testing.T) {
@@ -20,13 +21,13 @@ func TestBencode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fdata, err := os.ReadFile(tt.path)
-			utils.CheckError(t, err)
+			test.CheckError(t, err)
 
 			d, err := Decode(fdata)
-			utils.CheckError(t, err)
+			test.CheckError(t, err)
 
 			e, err := Encode(d)
-			utils.CheckError(t, err)
+			test.CheckError(t, err)
 
 			if !bytes.Equal(fdata, e) {
 				t.Error("encode(decode(fdata)) != fdata")

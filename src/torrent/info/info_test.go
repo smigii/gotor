@@ -1,4 +1,4 @@
-package fileio
+package info
 
 import (
 	"encoding/hex"
@@ -6,6 +6,7 @@ import (
 
 	"gotor/bencode"
 	"gotor/utils"
+	"gotor/utils/test"
 )
 
 func TestCreateTorInfo(t *testing.T) {
@@ -60,7 +61,7 @@ func TestCreateTorInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			info, e := CreateTorInfo(tt.paths, tt.workingDir, tt.name, tt.piecelen)
-			utils.CheckError(t, e)
+			test.CheckError(t, e)
 
 			bcoded := info.Bencode()
 			enc, e := bencode.Encode(bcoded)

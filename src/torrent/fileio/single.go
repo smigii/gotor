@@ -5,6 +5,8 @@ import (
 	"io"
 
 	"gotor/bf"
+	fentry2 "gotor/torrent/filesd"
+	"gotor/torrent/info"
 	"gotor/utils"
 )
 
@@ -15,8 +17,8 @@ import (
 // faster than MultiFileHandler since it doesn't need to find out which files
 // are contained in a given piece.
 type SingleFileHandler struct {
-	info   *TorInfo
-	fentry *FileEntry
+	tinfo  *info.TorInfo
+	fentry *fentry2.Entry
 	rw     *readerWriter
 	bf     *bf.Bitfield
 }
@@ -24,14 +26,14 @@ type SingleFileHandler struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewSingleFileHandler(info *TorInfo) *SingleFileHandler {
-	rw := NewReaderWriter(info.Files())
+func NewSingleFileHandler(tinfo *info.TorInfo) *SingleFileHandler {
+	rw := NewReaderWriter(tinfo.Files())
 
 	return &SingleFileHandler{
-		info:   info,
-		fentry: &info.Files()[0],
+		tinfo:  tinfo,
+		fentry: &tinfo.Files()[0],
 		rw:     rw,
-		bf:     bf.NewBitfield(info.NumPieces()),
+		bf:     bf.NewBitfield(tinfo.NumPieces()),
 	}
 }
 
@@ -39,18 +41,18 @@ func NewSingleFileHandler(info *TorInfo) *SingleFileHandler {
 // IMPL =======================================================================
 
 func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
-	info := sfh.info
+	tinfo := sfh.tinfo
 
-	if index >= info.numPieces {
-		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, info.numPieces-1)
+	if index >= tinfo.NumPieces() {
+		return 0, fmt.Errorf("attempted to get index %v, max is %v", index, tinfo.NumPieces()-1)
 	}
 
-	seekAmnt := info.pieceLen * index
-	readAmnt := info.pieceLen
-	truncAmnt := info.length % info.pieceLen
+	seekAmnt := tinfo.PieceLen() * index
+	readAmnt := tinfo.PieceLen()
+	truncAmnt := tinfo.Length() % tinfo.PieceLen()
 
 	// Last piece may be truncated
-	if index == info.numPieces-1 && truncAmnt != 0 {
+	if index == tinfo.NumPieces()-1 && truncAmnt != 0 {
 		readAmnt = truncAmnt
 	}
 
@@ -63,19 +65,19 @@ func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 }
 
 func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
-	info := sfh.info
-	if index >= info.numPieces {
-		return fmt.Errorf("index out of bounds, got %v, max %v", index, info.numPieces)
+	tinfo := sfh.tinfo
+	if index >= tinfo.NumPieces() {
+		return fmt.Errorf("index out of bounds, got %v, max %v", index, tinfo.NumPieces())
 	}
 
 	hash := utils.SHA1(data)
-	knownHash, _ := info.PieceHash(index)
+	knownHash, _ := tinfo.PieceHash(index)
 
 	if hash != knownHash {
 		return &HashError{}
 	}
 
-	seekAmnt := index * info.pieceLen
+	seekAmnt := index * tinfo.PieceLen()
 
 	e := sfh.rw.Write(sfh.fentry.LocalPath(), seekAmnt, data)
 
@@ -87,9 +89,9 @@ func (sfh *SingleFileHandler) Validate() error {
 	const mib = 1048576
 	const maxBuf = 10 * mib
 
-	info := sfh.TorInfo()
-	npieces := maxBuf / info.PieceLen()
-	bufSize := npieces * info.PieceLen()
+	tinfo := sfh.TorInfo()
+	npieces := maxBuf / tinfo.PieceLen()
+	bufSize := npieces * tinfo.PieceLen()
 
 	buf := make([]byte, bufSize, bufSize)
 	seek := int64(0)
@@ -107,9 +109,9 @@ func (sfh *SingleFileHandler) Validate() error {
 		}
 		seek += n
 
-		pieces := utils.SegmentData(buf, info.PieceLen())
+		pieces := utils.SegmentData(buf, tinfo.PieceLen())
 		for _, piece := range pieces {
-			wantHash, _ := info.PieceHash(index)
+			wantHash, _ := tinfo.PieceHash(index)
 			gotHash := utils.SHA1(piece)
 			eq := wantHash == gotHash
 			sfh.Bitfield().Set(index, eq)
@@ -120,8 +122,8 @@ func (sfh *SingleFileHandler) Validate() error {
 	return nil
 }
 
-func (sfh *SingleFileHandler) TorInfo() *TorInfo {
-	return sfh.info
+func (sfh *SingleFileHandler) TorInfo() *info.TorInfo {
+	return sfh.tinfo
 }
 
 func (sfh *SingleFileHandler) Bitfield() *bf.Bitfield {

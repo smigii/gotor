@@ -1,4 +1,4 @@
-package fileio
+package info
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"gotor/bencode"
+	"gotor/torrent/filesd"
 	"gotor/utils"
 )
 
@@ -31,9 +32,9 @@ type TorInfo struct {
 	pieceLen  int64  `info:"piece length"`
 	hashes    string `info:"pieces"`
 	numPieces int64
-	length    int64       `info:"length"`
-	files     []FileEntry `info:"files"`
-	isSingle  bool        // Is this a single-file or multi-file torrent?
+	length    int64          `info:"length"`
+	files     []filesd.Entry `info:"files"`
+	isSingle  bool           // Is this a single-file or multi-file torrent?
 }
 
 // ============================================================================
@@ -59,7 +60,7 @@ func (ti *TorInfo) Length() int64 {
 	return ti.length
 }
 
-func (ti *TorInfo) Files() []FileEntry {
+func (ti *TorInfo) Files() []filesd.Entry {
 	return ti.files
 }
 
@@ -71,7 +72,7 @@ func (ti *TorInfo) IsSingle() bool {
 // CONSTRUCTOR ================================================================
 
 func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int64) (*TorInfo, error) {
-	fentries := make([]FileEntry, 0, len(paths))
+	fentries := make([]filesd.Entry, 0, len(paths))
 
 	const mib = 1048576
 	const maxBuf = 5 * mib
@@ -102,7 +103,7 @@ func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int6
 			return nil, e
 		}
 
-		fentry := MakeFileEntry(fpath, stat.Size())
+		fentry := filesd.MakeFileEntry(fpath, stat.Size())
 		fentry.SetLocalPath(localPath)
 		fentries = append(fentries, fentry)
 
@@ -142,7 +143,7 @@ func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int6
 	return NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
 }
 
-func NewTorInfo(name string, pieceLen int64, hashes string, files []FileEntry) (*TorInfo, error) {
+func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry) (*TorInfo, error) {
 
 	if len(hashes)%20 != 0 {
 		return nil, errors.New("hashes must be multiple of 20")
@@ -197,10 +198,10 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 	if err == nil {
 		fdata.isSingle = true
 
-		fentry := MakeFileEntry(fdata.Name(), fdata.Length())
+		fentry := filesd.MakeFileEntry(fdata.Name(), fdata.Length())
 		localPath := path.Join(workingDir, fentry.TorPath())
 		fentry.SetLocalPath(localPath)
-		fdata.files = []FileEntry{fentry}
+		fdata.files = []filesd.Entry{fentry}
 
 	} else {
 		fdata.isSingle = false
@@ -239,8 +240,8 @@ func (ti *TorInfo) PieceHash(idx int64) (string, error) {
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded
 // list.
-func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, error) {
-	sfl := make([]FileEntry, 0, 4)
+func extractFileEntries(benlist bencode.List, dirname string) ([]filesd.Entry, error) {
+	sfl := make([]filesd.Entry, 0, 4)
 
 	for _, fEntry := range benlist {
 		fDict, ok := fEntry.(bencode.Dict)
@@ -280,7 +281,7 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, erro
 		l := len(strb.String())
 
 		// exclude last '/'
-		sfl = append(sfl, MakeFileEntry(strb.String()[:l-1], fLen))
+		sfl = append(sfl, filesd.MakeFileEntry(strb.String()[:l-1], fLen))
 	}
 
 	return sfl, nil

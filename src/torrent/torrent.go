@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"gotor/torrent/fileio"
+	"gotor/torrent/info"
 
 	"gotor/bencode"
 	"gotor/utils"
@@ -48,7 +49,7 @@ func (tor *Torrent) FileHandler() fileio.FileHandler {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewTorrent(info *fileio.TorInfo, announce string) (*Torrent, error) {
+func NewTorrent(info *info.TorInfo, announce string) (*Torrent, error) {
 	// Make FileHandler
 	var fh fileio.FileHandler
 	if len(info.Files()) == 1 {
@@ -99,15 +100,15 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 		return nil, err
 	}
 
-	info, err := dict.GetDict("info")
+	infodict, err := dict.GetDict("info")
 	if err != nil {
 		return nil, err
 	}
 
-	enc, _ := bencode.Encode(info)
+	enc, _ := bencode.Encode(infodict)
 	tor.infohash = utils.SHA1(enc)
 
-	torInfo, err := fileio.FromDict(info, workingDir)
+	torInfo, err := info.FromDict(infodict, workingDir)
 	if err != nil {
 		return nil, err
 	}

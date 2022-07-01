@@ -1,4 +1,4 @@
-package utils
+package test
 
 import (
 	"fmt"
@@ -50,6 +50,19 @@ func CleanUpTestFile(fpath string) error {
 	}
 
 	return nil
+}
+
+var dummyHash []byte = nil
+
+// DummyHashes creates and returns a string of length n*20, to be used for
+// creating dummy hash strings needed for testing.
+func DummyHashes(n int64) string {
+	size := 20 * n
+	if dummyHash == nil || int64(len(dummyHash)) < size {
+		dummyHash = make([]byte, size, size)
+	}
+
+	return string(dummyHash[:size])
 }
 
 func CheckError(t *testing.T, e error) {
