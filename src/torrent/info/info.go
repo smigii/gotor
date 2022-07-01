@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -199,7 +198,7 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 		fdata.isSingle = true
 
 		fentry := filesd.MakeFileEntry(fdata.Name(), fdata.Length())
-		localPath := path.Join(workingDir, fentry.TorPath())
+		localPath := filepath.Join(workingDir, fentry.TorPath())
 		fentry.SetLocalPath(localPath)
 		fdata.files = []filesd.Entry{fentry}
 

@@ -126,22 +126,22 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 // MISC =======================================================================
 
 func (tor *Torrent) String() string {
-	info := tor.fhandle.TorInfo()
+	torInfo := tor.fhandle.TorInfo()
 	strb := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
 
 	strb.WriteString("Torrent Info:\n")
-	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", info.Name()))
+	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", torInfo.Name()))
 	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
-	plen, units := utils.Bytes4Humans(info.PieceLen())
-	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", info.NumPieces(), plen, units))
-	bsize, units := utils.Bytes4Humans(info.Length())
+	plen, units := utils.Bytes4Humans(torInfo.PieceLen())
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", torInfo.NumPieces(), plen, units))
+	bsize, units := utils.Bytes4Humans(torInfo.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
-	if !info.IsSingle() {
+	if !torInfo.IsSingle() {
 		strb.WriteString("\nFiles:\n")
-		for _, fe := range info.Files() {
+		for _, fe := range torInfo.Files() {
 			strb.WriteString(fe.TorPath())
 			strb.WriteByte('\n')
 		}
