@@ -11,13 +11,12 @@ import (
 // ============================================================================
 // STRUCT =====================================================================
 
-// SingleFileHandler is used for single-file torrents. It can access pieces faster
-// than MultiFileHandler since it doesn't need to find out which files are contained
-// in a given piece.
+// SingleFileHandler is used for single-file torrents. It can access pieces
+// faster than MultiFileHandler since it doesn't need to find out which files
+// are contained in a given piece.
 type SingleFileHandler struct {
 	info   *TorInfo
 	fentry *FileEntry
-	wd     string // Working directory
 	rw     *readerWriter
 	bf     *bf.Bitfield
 }
