@@ -303,15 +303,7 @@ func (ti *TorInfo) Bencode() bencode.Dict {
 	} else {
 		list := make(bencode.List, 0, len(ti.Files()))
 		for _, fentry := range ti.Files() {
-			pathTokens := strings.Split(fentry.TorPath(), "/")
-			pathList := make(bencode.List, 0, len(pathTokens))
-			for _, pathToken := range pathTokens {
-				pathList = append(pathList, pathToken)
-			}
-
-			fdict := make(bencode.Dict)
-			fdict["length"] = fentry.Length()
-			fdict["path"] = pathList
+			fdict := fentry.Bencode()
 			list = append(list, fdict)
 		}
 		d["files"] = list

@@ -2,6 +2,9 @@ package fileio
 
 import (
 	"fmt"
+	"strings"
+
+	"gotor/bencode"
 )
 
 // ============================================================================
@@ -83,6 +86,21 @@ func MakeFileEntry(torPath string, length int64) FileEntry {
 		torPath:   torPath,
 		localPath: torPath,
 	}
+}
+
+func (fe *FileEntry) Bencode() bencode.Dict {
+	pathTokens := strings.Split(fe.TorPath(), "/")
+	pathList := make(bencode.List, 0, len(pathTokens))
+
+	for _, pathToken := range pathTokens {
+		pathList = append(pathList, pathToken)
+	}
+
+	d := make(bencode.Dict)
+	d["length"] = fe.Length()
+	d["path"] = pathList
+
+	return d
 }
 
 // PieceInfo calculates and returns pieceInfo struct for a given piece index.
