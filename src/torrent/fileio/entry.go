@@ -7,17 +7,19 @@ import (
 // ============================================================================
 // STRUCTS ====================================================================
 
-// FileEntry holds only the data contained in a torrent's info dictionary.
-// This exists to facilitate testing; rather than passing in a bencode.List to
-// testing setup, we can pass these instead.
+// FileEntry represents an entry in a torrent's info["files"] list, which holds
+// dictionaries of {length, path} for each file. FileEntry also includes the
+// localPath field, which is can be changed by the user to change the location
+// or name of the file.
 type FileEntry struct {
-	length int64
-	fpath  string
+	length    int64
+	torPath   string // File path as defined in torrent file
+	localPath string // File path as defined by user (optional)
 }
 
 // FileEntryWrapper wraps the FileEntry struct with the starting and ending
-// indices and byte-offsets for a file. This is used by MultiFileHandler structs to
-// find which files are related to which pieces.
+// indices and byte-offsets for a file. This is used by MultiFileHandler
+// structs to find which files are related to which pieces.
 type FileEntryWrapper struct {
 	FileEntry
 	startPieceIdx int64 // Starting piece index
@@ -42,8 +44,16 @@ func (fe *FileEntry) Length() int64 {
 	return fe.length
 }
 
-func (fe *FileEntry) Path() string {
-	return fe.fpath
+func (fe *FileEntry) TorPath() string {
+	return fe.torPath
+}
+
+func (fe *FileEntry) LocalPath() string {
+	return fe.localPath
+}
+
+func (fe *FileEntry) SetLocalPath(newPath string) {
+	fe.localPath = newPath
 }
 
 // ----------------------------------------------------------------------------
@@ -67,10 +77,11 @@ func (few *FileEntryWrapper) EndPieceOff() int64 {
 // ============================================================================
 // FUNK =======================================================================
 
-func MakeFileEntry(fpath string, length int64) FileEntry {
+func MakeFileEntry(torPath string, length int64) FileEntry {
 	return FileEntry{
-		length: length,
-		fpath:  fpath,
+		length:    length,
+		torPath:   torPath,
+		localPath: torPath,
 	}
 }
 
@@ -138,5 +149,4 @@ func (few *FileEntryWrapper) PieceInfo(index int64, pieceLen int64) (*pieceInfo,
 	}
 
 	return &info, nil
-
 }

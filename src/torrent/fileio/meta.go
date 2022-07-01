@@ -20,8 +20,8 @@ func (fme *FileMetaError) Error() string {
 // ============================================================================
 // STRUCTS ====================================================================
 
-// TorFileMeta holds the relevent metadata of the files in torrent.
-type TorFileMeta struct {
+// TorInfo holds the metadata found in a torrent's info dictionary.
+type TorInfo struct {
 	name      string
 	pieceLen  int64
 	pieces    string
@@ -34,38 +34,38 @@ type TorFileMeta struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (t *TorFileMeta) Name() string {
+func (t *TorInfo) Name() string {
 	return t.name
 }
 
-func (t *TorFileMeta) PieceLen() int64 {
+func (t *TorInfo) PieceLen() int64 {
 	return t.pieceLen
 }
 
-func (t *TorFileMeta) PieceHashes() string {
+func (t *TorInfo) PieceHashes() string {
 	return t.pieces
 }
 
-func (t *TorFileMeta) NumPieces() int64 {
+func (t *TorInfo) NumPieces() int64 {
 	return t.numPieces
 }
 
-func (t *TorFileMeta) Length() int64 {
+func (t *TorInfo) Length() int64 {
 	return t.length
 }
 
-func (t *TorFileMeta) Files() []FileEntry {
+func (t *TorInfo) Files() []FileEntry {
 	return t.files
 }
 
-func (t *TorFileMeta) IsSingle() bool {
+func (t *TorInfo) IsSingle() bool {
 	return t.isSingle
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntry) (*TorFileMeta, error) {
+func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntry) (*TorInfo, error) {
 
 	if len(hashes)%20 != 0 {
 		return nil, errors.New("hashes must be multiple of 20")
@@ -76,7 +76,7 @@ func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntr
 		length += fentry.Length()
 	}
 
-	return &TorFileMeta{
+	return &TorInfo{
 		name:      name,
 		pieceLen:  pieceLen,
 		pieces:    hashes,
@@ -88,8 +88,8 @@ func CreateFileMeta(name string, pieceLen int64, hashes string, files []FileEntr
 
 }
 
-func NewFileMeta(info bencode.Dict) (*TorFileMeta, error) {
-	fdata := TorFileMeta{}
+func NewFileMeta(info bencode.Dict) (*TorInfo, error) {
+	fdata := TorInfo{}
 	var err error
 
 	fdata.name, err = info.GetString("name")
@@ -141,7 +141,7 @@ func NewFileMeta(info bencode.Dict) (*TorFileMeta, error) {
 // ============================================================================
 // FUNC =======================================================================
 
-func (t *TorFileMeta) PieceHash(idx int64) (string, error) {
+func (t *TorInfo) PieceHash(idx int64) (string, error) {
 	if idx >= t.numPieces {
 		return "", &FileMetaError{
 			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, t.numPieces-1),
@@ -195,8 +195,8 @@ func extractFileEntries(benlist bencode.List, dirname string) ([]FileEntry, erro
 		l := len(strb.String())
 
 		sfl = append(sfl, FileEntry{
-			fpath:  strb.String()[:l-1], // exclude last '/'
-			length: fLen,
+			torPath: strb.String()[:l-1], // exclude last '/'
+			length:  fLen,
 		})
 	}
 

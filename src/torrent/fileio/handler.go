@@ -30,7 +30,7 @@ type FileHandler interface {
 	Write(index int64, data []byte) error
 
 	// FileMeta returns the metadata for the files in the torrent.
-	FileMeta() *TorFileMeta
+	FileMeta() *TorInfo
 
 	// Validate will look through the file(s) specified in the torrent and
 	// check the pieces and their hashes, updating the results in its bitfield.
@@ -38,6 +38,12 @@ type FileHandler interface {
 
 	Bitfield() *bf.Bitfield
 
+	// OCAT (Open Create Append Truncate) will go through all the file paths
+	// in the TorInfo and open them. It will use utils.OCAT to
+	// open/create/append/truncate files to their appropriate sizes.
+	OCAT() error
+
+	// Close will close all the file pointers that are currently open.
 	Close() error
 }
 

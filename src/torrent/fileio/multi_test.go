@@ -11,7 +11,7 @@ import (
 
 func TestNewMultiFileHandler(t *testing.T) {
 
-	testFileMeta := TorFileMeta{}
+	testFileMeta := TorInfo{}
 
 	type testStruct struct {
 		fentry         FileEntry
@@ -43,20 +43,20 @@ func TestNewMultiFileHandler(t *testing.T) {
 		files     []testStruct
 	}{
 		{"Single File", 32, 1, 32, []testStruct{
-			{FileEntry{32, "f1"}, 0, 0, 0, 31}},
+			{MakeFileEntry("f1", 32), 0, 0, 0, 31}},
 		},
 		{"Multifile Simple", 5, 5, 25, []testStruct{
-			{FileEntry{3, "f1"}, 0, 0, 0, 2},  // [0, 2]
-			{FileEntry{5, "f2"}, 0, 1, 3, 2},  // [3, 7]
-			{FileEntry{2, "f3"}, 1, 1, 3, 4},  // [8, 9]
-			{FileEntry{13, "f4"}, 2, 4, 0, 2}, // [10, 22]
-			{FileEntry{2, "f5"}, 4, 4, 3, 4}}, // [23, 24]
+			{MakeFileEntry("f1", 3), 0, 0, 0, 2},  // [0, 2]
+			{MakeFileEntry("f2", 5), 0, 1, 3, 2},  // [3, 7]
+			{MakeFileEntry("f3", 2), 1, 1, 3, 4},  // [8, 9]
+			{MakeFileEntry("f4", 13), 2, 4, 0, 2}, // [10, 22]
+			{MakeFileEntry("f5", 2), 4, 4, 3, 4}}, // [23, 24]
 		},
 		{"Multifile Truc", 5, 5, 22, []testStruct{
-			{FileEntry{5, "f1"}, 0, 0, 0, 4},  // [0, 4]
-			{FileEntry{5, "f2"}, 1, 1, 0, 4},  // [5, 9]
-			{FileEntry{10, "f3"}, 2, 3, 0, 4}, // [10, 19]
-			{FileEntry{2, "f4"}, 4, 4, 0, 1}}, // [20, 21]
+			{MakeFileEntry("f1", 5), 0, 0, 0, 4},  // [0, 4]
+			{MakeFileEntry("f2", 5), 1, 1, 0, 4},  // [5, 9]
+			{MakeFileEntry("f3", 10), 2, 3, 0, 4}, // [10, 19]
+			{MakeFileEntry("f4", 2), 4, 4, 0, 1}}, // [20, 21]
 		},
 	}
 	for _, tt := range tests {
@@ -67,12 +67,14 @@ func TestNewMultiFileHandler(t *testing.T) {
 			testFileMeta.pieceLen = tt.pieceLen
 			testFileMeta.numPieces = tt.numPieces
 
-			mfh, e := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta)
+
+			e := mfh.OCAT()
 			defer func() {
 				err := mfh.Close()
 				utils.CheckError(t, err)
 				for _, tstruct := range tt.files {
-					err = utils.CleanUpTestFile(tstruct.fentry.fpath)
+					err = utils.CleanUpTestFile(tstruct.fentry.LocalPath())
 					utils.CheckError(t, err)
 				}
 			}()
@@ -91,7 +93,7 @@ func TestNewMultiFileHandler(t *testing.T) {
 
 func TestGetFiles(t *testing.T) {
 
-	testFileMeta := TorFileMeta{}
+	testFileMeta := TorInfo{}
 
 	tests := []struct {
 		name     string
@@ -100,9 +102,9 @@ func TestGetFiles(t *testing.T) {
 		kvp      map[int64][]string // Map piece index to file names that should be returned
 	}{
 		{"One Each", 3, []FileEntry{
-			{3, "f1"},
-			{3, "f2"},
-			{3, "f3"},
+			MakeFileEntry("f1", 3),
+			MakeFileEntry("f2", 3),
+			MakeFileEntry("f3", 3),
 		}, map[int64][]string{
 			0: {"f1"},
 			1: {"f2"},
@@ -110,9 +112,9 @@ func TestGetFiles(t *testing.T) {
 			3: {},
 		}},
 		{"Mix (up to 2)", 3, []FileEntry{
-			{4, "f1"},
-			{6, "f2"},
-			{2, "f3"},
+			MakeFileEntry("f1", 4),
+			MakeFileEntry("f2", 6),
+			MakeFileEntry("f3", 2),
 		}, map[int64][]string{
 			0: {"f1"},
 			1: {"f1", "f2"},
@@ -121,9 +123,9 @@ func TestGetFiles(t *testing.T) {
 			4: {},
 		}},
 		{"Triple", 9, []FileEntry{
-			{3, "f1"},
-			{3, "f2"},
-			{3, "f3"},
+			MakeFileEntry("f1", 3),
+			MakeFileEntry("f2", 3),
+			MakeFileEntry("f3", 3),
 		}, map[int64][]string{
 			0: {"f1", "f2", "f3"},
 			1: {},
@@ -135,12 +137,13 @@ func TestGetFiles(t *testing.T) {
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
 
-			mfh, e := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta)
+			e := mfh.OCAT()
 			defer func() {
 				err := mfh.Close()
 				utils.CheckError(t, err)
 				for _, fentry := range tt.files {
-					err = utils.CleanUpTestFile(fentry.fpath)
+					err = utils.CleanUpTestFile(fentry.LocalPath())
 					utils.CheckError(t, err)
 				}
 			}()
@@ -154,7 +157,7 @@ func TestGetFiles(t *testing.T) {
 
 				got := make([]string, 0, len(files))
 				for _, f := range files {
-					got = append(got, f.fpath)
+					got = append(got, f.torPath)
 				}
 
 				if len(files) != len(v) {
@@ -172,7 +175,7 @@ func TestGetFiles(t *testing.T) {
 
 func TestMultiFileHandler_Piece(t *testing.T) {
 
-	testFileMeta := TorFileMeta{}
+	testFileMeta := TorInfo{}
 
 	// Initialize some data
 	dataLen := uint8(100)
@@ -187,27 +190,27 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 		files    []FileEntry
 	}{
 		{"Tiny", 2, []FileEntry{
-			{1, "A"},
+			MakeFileEntry("f1", 1),
 		}},
 		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
 		{"Simple", 3, []FileEntry{
-			{4, "A"},
-			{6, "B"},
-			{2, "C"},
+			MakeFileEntry("f1", 4),
+			MakeFileEntry("f2", 6),
+			MakeFileEntry("f3", 2),
 		}},
 		{"Multi", 4, []FileEntry{
-			{5, "A"},
-			{1, "B"},
-			{1, "C"},
-			{1, "D"},
+			MakeFileEntry("f1", 5),
+			MakeFileEntry("f2", 1),
+			MakeFileEntry("f3", 1),
+			MakeFileEntry("f4", 1),
 		}},
 	}
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
 			defer func() {
-				for _, tf := range tt.files {
-					err := utils.CleanUpTestFile(tf.fpath)
+				for _, fentry := range tt.files {
+					err := utils.CleanUpTestFile(fentry.LocalPath())
 					utils.CheckError(t, err)
 				}
 			}()
@@ -215,7 +218,7 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 			// Write the test files
 			curs := int64(0) // Cursor for data byte slice
 			for _, tf := range tt.files {
-				e := utils.WriteTestFile(tf.fpath, data[curs:curs+tf.length])
+				e := utils.WriteTestFile(tf.torPath, data[curs:curs+tf.length])
 				if e != nil {
 					t.Fatal(e)
 				}
@@ -227,7 +230,8 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 			testFileMeta.files = tt.files
 			testFileMeta.pieceLen = tt.piecelen
 
-			mfh, e := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta)
+			e := mfh.OCAT()
 			utils.CheckError(t, e)
 			defer func() {
 				err := mfh.Close()
@@ -256,7 +260,7 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 }
 
 func TestMultiFileHandler_Write(t *testing.T) {
-	testFileMeta := TorFileMeta{}
+	testFileMeta := TorInfo{}
 
 	type TestFileEntry struct {
 		FileEntry
@@ -269,29 +273,29 @@ func TestMultiFileHandler_Write(t *testing.T) {
 		files    []TestFileEntry
 	}{
 		{"Tiny", 2, []TestFileEntry{
-			{FileEntry{1, "A"}, []byte{'a'}},
+			{MakeFileEntry("f1", 1), []byte{'a'}},
 		}},
 		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
 		{"Simple", 3, []TestFileEntry{
-			{FileEntry{4, "A"}, []byte{'a', 'b', 'c', 'd'}},
-			{FileEntry{6, "B"}, []byte{'e', 'f', 'g', 'h', 'i', 'j'}},
-			{FileEntry{2, "C"}, []byte{'k', 'l'}},
+			{MakeFileEntry("f1", 4), []byte{'a', 'b', 'c', 'd'}},
+			{MakeFileEntry("f2", 6), []byte{'e', 'f', 'g', 'h', 'i', 'j'}},
+			{MakeFileEntry("f3", 2), []byte{'k', 'l'}},
 		}},
 		// [A|A|A|A]  [A|B|C|D]  [E|E| | ]
 		{"Multi", 4, []TestFileEntry{
-			{FileEntry{5, "A"}, []byte{'a', 'b', 'c', 'd', 'e'}},
-			{FileEntry{1, "B"}, []byte{'f'}},
-			{FileEntry{1, "C"}, []byte{'g'}},
-			{FileEntry{1, "D"}, []byte{'h'}},
-			{FileEntry{2, "E"}, []byte{'i', 'j'}},
+			{MakeFileEntry("f1", 5), []byte{'a', 'b', 'c', 'd', 'e'}},
+			{MakeFileEntry("f1", 1), []byte{'f'}},
+			{MakeFileEntry("f2", 1), []byte{'g'}},
+			{MakeFileEntry("f3", 1), []byte{'h'}},
+			{MakeFileEntry("f4", 2), []byte{'i', 'j'}},
 		}},
 	}
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
 			defer func() {
-				for _, tf := range tt.files {
-					err := utils.CleanUpTestFile(tf.fpath)
+				for _, tfe := range tt.files {
+					err := utils.CleanUpTestFile(tfe.LocalPath())
 					utils.CheckError(t, err)
 				}
 			}()
@@ -300,7 +304,7 @@ func TestMultiFileHandler_Write(t *testing.T) {
 			data := make([]byte, 0, 0)
 			fileEntries := make([]FileEntry, 0, len(tt.files))
 			for _, tf := range tt.files {
-				f, e := utils.CreateZeroFilledFile(tf.fpath, tf.length)
+				f, e := utils.CreateZeroFilledFile(tf.torPath, tf.length)
 				utils.CheckError(t, e)
 				e = f.Close()
 				utils.CheckError(t, e)
@@ -325,7 +329,8 @@ func TestMultiFileHandler_Write(t *testing.T) {
 			testFileMeta.numPieces = int64(len(pieces))
 			testFileMeta.name = "testwrite"
 
-			mfh, e := NewMultiFileHandler(&testFileMeta)
+			mfh := NewMultiFileHandler(&testFileMeta)
+			e := mfh.OCAT()
 			utils.CheckError(t, e)
 			defer func() {
 				err := mfh.Close()

@@ -59,11 +59,11 @@ func AppendZeros(fp *os.File, amnt int64) error {
 	return nil
 }
 
-// OpenCheck will try to first open the file and check the size. If the file
+// OCAT will try to first open the file and check the size. If the file
 // does not exist, it will create the file at the appropriate size. If the
 // file is too big, it will truncate it to the correct size. If it is too
 // small, it will grow the file.
-func OpenCheck(fpath string, length int64) (*os.File, error) {
+func OCAT(fpath string, length int64) (*os.File, error) {
 
 	fp, e := os.OpenFile(fpath, os.O_RDWR, 0666)
 

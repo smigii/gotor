@@ -11,7 +11,7 @@ import (
 type MultiFileHandler struct {
 	files []FileEntryWrapper
 	rw    *readerWriter
-	meta  *TorFileMeta
+	meta  *TorInfo
 	bf    *bf.Bitfield
 }
 
@@ -22,7 +22,7 @@ func (mfh *MultiFileHandler) Files() []FileEntryWrapper {
 	return mfh.files
 }
 
-func (mfh *MultiFileHandler) FileMeta() *TorFileMeta {
+func (mfh *MultiFileHandler) FileMeta() *TorInfo {
 	return mfh.meta
 }
 
@@ -48,7 +48,7 @@ func (mfh *MultiFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		}
 
 		subpiece := buf[off : off+pInfo.ReadAmnt]
-		_, e = mfh.rw.Read(fe.fpath, pInfo.SeekAmnt, subpiece)
+		_, e = mfh.rw.Read(fe.torPath, pInfo.SeekAmnt, subpiece)
 		if e != nil {
 			return 0, e
 		}
@@ -79,7 +79,7 @@ func (mfh *MultiFileHandler) Write(index int64, data []byte) error {
 		}
 
 		subpiece := data[off : off+pInfo.ReadAmnt]
-		e = mfh.rw.Write(fe.Path(), pInfo.SeekAmnt, subpiece)
+		e = mfh.rw.Write(fe.TorPath(), pInfo.SeekAmnt, subpiece)
 		if e != nil {
 			return e
 		}
@@ -95,15 +95,20 @@ func (mfh *MultiFileHandler) Validate() error {
 	return nil
 }
 
+func (mfh *MultiFileHandler) OCAT() error {
+	e := mfh.rw.OCAT()
+	return e
+
+	//e = mfh.Validate()
+	//return e
+}
+
 func (mfh *MultiFileHandler) Close() error {
 	return mfh.rw.CloseAll()
 }
 
-func NewMultiFileHandler(meta *TorFileMeta) (*MultiFileHandler, error) {
-	rw, e := NewReaderWriter(meta.files)
-	if e != nil {
-		return nil, e
-	}
+func NewMultiFileHandler(meta *TorInfo) *MultiFileHandler {
+	rw := NewReaderWriter(meta.files)
 
 	flist := MultiFileHandler{
 		files: make([]FileEntryWrapper, 0, len(meta.files)),
@@ -148,7 +153,7 @@ func NewMultiFileHandler(meta *TorFileMeta) (*MultiFileHandler, error) {
 		})
 	}
 
-	return &flist, nil
+	return &flist
 }
 
 // GetFiles returns all files that are contained within the specified piece

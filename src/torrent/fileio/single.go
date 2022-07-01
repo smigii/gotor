@@ -15,7 +15,7 @@ import (
 // than MultiFileHandler since it doesn't need to find out which files are contained
 // in a given piece.
 type SingleFileHandler struct {
-	meta  *TorFileMeta
+	meta  *TorInfo
 	entry *FileEntry
 	rw    *readerWriter
 	bf    *bf.Bitfield
@@ -24,23 +24,18 @@ type SingleFileHandler struct {
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
-func NewSingleFileHandler(meta *TorFileMeta) (*SingleFileHandler, error) {
+func NewSingleFileHandler(meta *TorInfo) *SingleFileHandler {
 	fentry := FileEntry{
-		length: meta.Length(),
-		fpath:  meta.Name(),
+		length:  meta.Length(),
+		torPath: meta.Name(),
 	}
-	rw, err := NewReaderWriter([]FileEntry{fentry})
-	if err != nil {
-		return nil, err
-	} else {
-		fs := SingleFileHandler{
-			meta:  meta,
-			rw:    rw,
-			entry: &fentry,
-			bf:    bf.NewBitfield(meta.NumPieces()),
-		}
-		//err = fs.Validate()  // broken
-		return &fs, err
+	rw := NewReaderWriter([]FileEntry{fentry})
+
+	return &SingleFileHandler{
+		meta:  meta,
+		rw:    rw,
+		entry: &fentry,
+		bf:    bf.NewBitfield(meta.NumPieces()),
 	}
 }
 
@@ -67,7 +62,7 @@ func (sfh *SingleFileHandler) Piece(index int64, buf []byte) (int64, error) {
 		return 0, fmt.Errorf("buffer to small, need %v, got %v", readAmnt, len(buf))
 	}
 
-	_, e := sfh.rw.Read(sfh.entry.fpath, seekAmnt, buf[:readAmnt])
+	_, e := sfh.rw.Read(sfh.entry.torPath, seekAmnt, buf[:readAmnt])
 	return readAmnt, e
 }
 
@@ -86,7 +81,7 @@ func (sfh *SingleFileHandler) Write(index int64, data []byte) error {
 
 	seekAmnt := index * meta.pieceLen
 
-	e := sfh.rw.Write(sfh.entry.fpath, seekAmnt, data)
+	e := sfh.rw.Write(sfh.entry.torPath, seekAmnt, data)
 
 	return e
 }
@@ -127,12 +122,20 @@ func (sfh *SingleFileHandler) Validate() error {
 	return nil
 }
 
-func (sfh *SingleFileHandler) FileMeta() *TorFileMeta {
+func (sfh *SingleFileHandler) FileMeta() *TorInfo {
 	return sfh.meta
 }
 
 func (sfh *SingleFileHandler) Bitfield() *bf.Bitfield {
 	return sfh.bf
+}
+
+func (sfh *SingleFileHandler) OCAT() error {
+	e := sfh.rw.OCAT()
+	return e
+
+	//e = sfh.Validate()
+	//return e
 }
 
 func (sfh *SingleFileHandler) Close() error {

@@ -11,7 +11,7 @@ import (
 
 func TestFileSingle_Piece(t *testing.T) {
 
-	testMeta := TorFileMeta{}
+	testMeta := TorInfo{}
 	testMeta.isSingle = true
 
 	tests := []struct {
@@ -85,7 +85,7 @@ func TestFileSingle_Write(t *testing.T) {
 				hashes.WriteString(utils.SHA1(p))
 			}
 
-			testMeta := TorFileMeta{
+			testMeta := TorInfo{
 				name:      tt.fpath,
 				pieceLen:  tt.pieceLen,
 				pieces:    hashes.String(),

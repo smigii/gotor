@@ -35,41 +35,25 @@ func (pe *PathError) Error() string {
 // STRUCTS ====================================================================
 
 type readerWriter struct {
-	pool map[string]*os.File
+	files []FileEntry
+	ptrs  map[string]*os.File
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewReaderWriter(files []FileEntry) (*readerWriter, error) {
-	filePool := readerWriter{
-		pool: make(map[string]*os.File),
+func NewReaderWriter(files []FileEntry) *readerWriter {
+	rw := readerWriter{
+		files: files,
+		ptrs:  make(map[string]*os.File),
 	}
 
-	errors := make([]FileErrorEntry, 0, 4)
-
-	for _, fentry := range files {
-		f, e := utils.OpenCheck(fentry.fpath, fentry.length)
-		if e != nil {
-			errors = append(errors, FileErrorEntry{
-				fpath: fentry.fpath,
-				err:   e,
-			})
-		} else {
-			filePool.pool[fentry.fpath] = f
-		}
-	}
-
-	var err error
-	if len(errors) > 0 {
-		err = &OpenError{errors: errors}
-	}
-	return &filePool, err
+	return &rw
 }
 
 func (rw *readerWriter) Write(fpath string, seekAmnt int64, data []byte) error {
 
-	ptr, ok := rw.pool[fpath]
+	ptr, ok := rw.ptrs[fpath]
 	if ok {
 		_, e := ptr.WriteAt(data, seekAmnt)
 		return e
@@ -79,7 +63,7 @@ func (rw *readerWriter) Write(fpath string, seekAmnt int64, data []byte) error {
 }
 
 func (rw *readerWriter) Read(fpath string, seekAmnt int64, buf []byte) (int64, error) {
-	ptr, ok := rw.pool[fpath]
+	ptr, ok := rw.ptrs[fpath]
 	if ok {
 		n, e := ptr.ReadAt(buf, seekAmnt)
 		return int64(n), e
@@ -99,8 +83,33 @@ func (rw *readerWriter) Move(fromPath string, toPath string) error {
 	return nil
 }
 
+// OCAT will call utils.OCAT to open/create/append/truncate a file
+// to the appropriate size.
+func (rw *readerWriter) OCAT() error {
+
+	errors := make([]FileErrorEntry, 0, 4)
+
+	for _, fentry := range rw.files {
+		f, e := utils.OCAT(fentry.torPath, fentry.length)
+		if e != nil {
+			errors = append(errors, FileErrorEntry{
+				fpath: fentry.torPath,
+				err:   e,
+			})
+		} else {
+			rw.ptrs[fentry.torPath] = f
+		}
+	}
+
+	var err error
+	if len(errors) > 0 {
+		err = &OpenError{errors: errors}
+	}
+	return err
+}
+
 func (rw *readerWriter) Close(fpath string) error {
-	ptr, ok := rw.pool[fpath]
+	ptr, ok := rw.ptrs[fpath]
 	if ok {
 		e := ptr.Close()
 		return e
@@ -110,7 +119,7 @@ func (rw *readerWriter) Close(fpath string) error {
 }
 
 func (rw *readerWriter) CloseAll() error {
-	for _, fptr := range rw.pool {
+	for _, fptr := range rw.ptrs {
 		e := fptr.Close()
 		if e != nil {
 			return e

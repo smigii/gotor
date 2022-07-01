@@ -95,15 +95,13 @@ func NewTorrent(torpath string) (*Torrent, error) {
 	}
 
 	if fmeta.IsSingle() {
-		tor.fhandle, err = fileio.NewSingleFileHandler(fmeta)
-		if err != nil {
-			panic(err)
-		}
+		tor.fhandle = fileio.NewSingleFileHandler(fmeta)
 	} else {
-		tor.fhandle, err = fileio.NewMultiFileHandler(fmeta)
-		if err != nil {
-			panic(err)
-		}
+		tor.fhandle = fileio.NewMultiFileHandler(fmeta)
+	}
+	err = tor.fhandle.OCAT()
+	if err != nil {
+		panic(err)
 	}
 
 	return &tor, nil
@@ -129,7 +127,7 @@ func (tor *Torrent) String() string {
 	if !meta.IsSingle() {
 		strb.WriteString("\nFiles:\n")
 		for _, fe := range meta.Files() {
-			strb.WriteString(fe.Path())
+			strb.WriteString(fe.TorPath())
 			strb.WriteByte('\n')
 		}
 	}
@@ -208,10 +206,7 @@ func CreateTorrent(paths []string, announce string, pieceLen int64) (*Torrent, e
 			return nil, e
 		}
 
-		fh, e = fileio.NewSingleFileHandler(meta)
-		if e != nil {
-			return nil, e
-		}
+		fh = fileio.NewSingleFileHandler(meta)
 	} else {
 		// TODO: implement names and  stuff
 		meta, e := fileio.CreateFileMeta("TBI", pieceLen, pieceHashes.String(), fentries)
@@ -219,10 +214,7 @@ func CreateTorrent(paths []string, announce string, pieceLen int64) (*Torrent, e
 			return nil, e
 		}
 
-		fh, e = fileio.NewMultiFileHandler(meta)
-		if e != nil {
-			return nil, e
-		}
+		fh = fileio.NewMultiFileHandler(meta)
 	}
 
 	return &Torrent{
