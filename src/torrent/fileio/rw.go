@@ -36,14 +36,14 @@ func (pe *PathError) Error() string {
 // STRUCTS ====================================================================
 
 type readerWriter struct {
-	files []filesd.Entry
+	files []filesd.EntryBase
 	ptrs  map[string]*os.File
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewReaderWriter(files []filesd.Entry) *readerWriter {
+func NewReaderWriter(files []filesd.EntryBase) *readerWriter {
 	rw := readerWriter{
 		files: files,
 		ptrs:  make(map[string]*os.File),

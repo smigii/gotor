@@ -31,9 +31,12 @@ type TorInfo struct {
 	pieceLen  int64  `info:"piece length"`
 	hashes    string `info:"pieces"`
 	numPieces int64
-	length    int64          `info:"length"`
-	files     []filesd.Entry `info:"files"`
-	isSingle  bool           // Is this a single-file or multi-file torrent?
+	length    int64              `info:"length"`
+	files     []filesd.EntryBase `info:"files"`
+	isSingle  bool               // Is this a single-file or multi-file torrent?
+
+	flist filesd.FileList
+	pm    PieceMap
 }
 
 // ============================================================================
@@ -59,7 +62,7 @@ func (ti *TorInfo) Length() int64 {
 	return ti.length
 }
 
-func (ti *TorInfo) Files() []filesd.Entry {
+func (ti *TorInfo) Files() []filesd.EntryBase {
 	return ti.files
 }
 
@@ -71,7 +74,7 @@ func (ti *TorInfo) IsSingle() bool {
 // CONSTRUCTOR ================================================================
 
 func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int64) (*TorInfo, error) {
-	fentries := make([]filesd.Entry, 0, len(paths))
+	fentries := make([]filesd.EntryBase, 0, len(paths))
 
 	const mib = 1048576
 	const maxBuf = 5 * mib
@@ -142,7 +145,7 @@ func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int6
 	return NewTorInfo(name, pieceLen, pieceHashes.String(), fentries)
 }
 
-func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry) (*TorInfo, error) {
+func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.EntryBase) (*TorInfo, error) {
 
 	if len(hashes)%20 != 0 {
 		return nil, errors.New("hashes must be multiple of 20")
@@ -154,6 +157,8 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry
 		length += fentry.Length()
 	}
 
+	flist := filesd.MakeFileList(files, pieceLen)
+
 	return &TorInfo{
 		name:      name,
 		pieceLen:  pieceLen,
@@ -162,12 +167,15 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry
 		length:    length,
 		files:     files,
 		isSingle:  len(files) == 1,
+
+		flist: flist,
 	}, nil
 
 }
 
 // FromDict creates and returns a new *TorInfo from the info dictionary of a
 // torrent file.
+// TODO: Read the values only, then pass to NewTorInfo
 func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 	fdata := TorInfo{}
 	var err error
@@ -200,7 +208,7 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 		fentry := filesd.MakeFileEntry(fdata.Name(), fdata.Length())
 		localPath := filepath.Join(workingDir, fentry.TorPath())
 		fentry.SetLocalPath(localPath)
-		fdata.files = []filesd.Entry{fentry}
+		fdata.files = []filesd.EntryBase{fentry}
 
 	} else {
 		fdata.isSingle = false
@@ -239,8 +247,8 @@ func (ti *TorInfo) PieceHash(idx int64) (string, error) {
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded
 // list.
-func extractFileEntries(benlist bencode.List, dirname string) ([]filesd.Entry, error) {
-	sfl := make([]filesd.Entry, 0, 4)
+func extractFileEntries(benlist bencode.List, dirname string) ([]filesd.EntryBase, error) {
+	sfl := make([]filesd.EntryBase, 0, 4)
 
 	for _, fEntry := range benlist {
 		fDict, ok := fEntry.(bencode.Dict)

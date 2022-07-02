@@ -15,15 +15,15 @@ import (
 func TestNewMultiFileHandler(t *testing.T) {
 
 	type testStruct struct {
-		fentry         fentry2.Entry
+		fentry         fentry2.EntryBase
 		wantStartPiece int64
 		wantEndPiece   int64
 		wantStartOff   int64
 		wantEndOff     int64
 	}
 
-	makeTorFileList := func(structs []testStruct) []fentry2.Entry {
-		l := make([]fentry2.Entry, 0, len(structs))
+	makeTorFileList := func(structs []testStruct) []fentry2.EntryBase {
+		l := make([]fentry2.EntryBase, 0, len(structs))
 		for _, v := range structs {
 			l = append(l, v.fentry)
 		}
@@ -97,10 +97,10 @@ func TestGetFiles(t *testing.T) {
 	tests := []struct {
 		name     string
 		piecelen int64
-		files    []fentry2.Entry
+		files    []fentry2.EntryBase
 		kvp      map[int64][]string // Map piece index to file names that should be returned
 	}{
-		{"One Each", 3, []fentry2.Entry{
+		{"One Each", 3, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 3),
 			fentry2.MakeFileEntry("f2", 3),
 			fentry2.MakeFileEntry("f3", 3),
@@ -110,7 +110,7 @@ func TestGetFiles(t *testing.T) {
 			2: {"f3"},
 			3: {},
 		}},
-		{"Mix (up to 2)", 3, []fentry2.Entry{
+		{"Mix (up to 2)", 3, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 4),
 			fentry2.MakeFileEntry("f2", 6),
 			fentry2.MakeFileEntry("f3", 2),
@@ -121,7 +121,7 @@ func TestGetFiles(t *testing.T) {
 			3: {"f2", "f3"},
 			4: {},
 		}},
-		{"Triple", 9, []fentry2.Entry{
+		{"Triple", 9, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 3),
 			fentry2.MakeFileEntry("f2", 3),
 			fentry2.MakeFileEntry("f3", 3),
@@ -186,18 +186,18 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 	tests := []struct {
 		name     string
 		piecelen int64
-		files    []fentry2.Entry
+		files    []fentry2.EntryBase
 	}{
-		{"Tiny", 2, []fentry2.Entry{
+		{"Tiny", 2, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 1),
 		}},
 		// [A|A|A]  [A|B|B]  [B|B|B]  [B|C|C]
-		{"Simple", 3, []fentry2.Entry{
+		{"Simple", 3, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 4),
 			fentry2.MakeFileEntry("f2", 6),
 			fentry2.MakeFileEntry("f3", 2),
 		}},
-		{"Multi", 4, []fentry2.Entry{
+		{"Multi", 4, []fentry2.EntryBase{
 			fentry2.MakeFileEntry("f1", 5),
 			fentry2.MakeFileEntry("f2", 1),
 			fentry2.MakeFileEntry("f3", 1),
@@ -263,7 +263,7 @@ func TestMultiFileHandler_Piece(t *testing.T) {
 func TestMultiFileHandler_Write(t *testing.T) {
 
 	type TestFileEntry struct {
-		fentry2.Entry
+		fentry2.EntryBase
 		data []byte
 	}
 
@@ -302,7 +302,7 @@ func TestMultiFileHandler_Write(t *testing.T) {
 
 			// Create empty files and create a single data byte array
 			data := make([]byte, 0, 0)
-			fileEntries := make([]fentry2.Entry, 0, len(tt.files))
+			fileEntries := make([]fentry2.EntryBase, 0, len(tt.files))
 			for _, tf := range tt.files {
 				f, e := utils.CreateZeroFilledFile(tf.TorPath(), tf.Length())
 				test.CheckError(t, e)
@@ -310,7 +310,7 @@ func TestMultiFileHandler_Write(t *testing.T) {
 				test.CheckError(t, e)
 
 				data = append(data, tf.data...)
-				fileEntries = append(fileEntries, tf.Entry)
+				fileEntries = append(fileEntries, tf.EntryBase)
 			}
 
 			// Get the pieces and hashes

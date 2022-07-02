@@ -11,7 +11,7 @@ import (
 // STRUCTS ====================================================================
 
 type MultiFileHandler struct {
-	files []filesd.EntryWrapper
+	files []filesd.Entry
 	tinfo *info.TorInfo
 	rw    *readerWriter
 	bf    *bf.Bitfield
@@ -20,7 +20,7 @@ type MultiFileHandler struct {
 // ============================================================================
 // GETTERS ====================================================================
 
-func (mfh *MultiFileHandler) Files() []filesd.EntryWrapper {
+func (mfh *MultiFileHandler) Files() []filesd.Entry {
 	return mfh.files
 }
 
@@ -113,7 +113,7 @@ func NewMultiFileHandler(tinfo *info.TorInfo) *MultiFileHandler {
 	rw := NewReaderWriter(tinfo.Files())
 
 	mfh := MultiFileHandler{
-		files: make([]filesd.EntryWrapper, 0, len(tinfo.Files())),
+		files: make([]filesd.Entry, 0, len(tinfo.Files())),
 		tinfo: tinfo,
 		bf:    bf.NewBitfield(tinfo.NumPieces()),
 		rw:    rw,
@@ -149,7 +149,7 @@ func NewMultiFileHandler(tinfo *info.TorInfo) *MultiFileHandler {
 
 // GetFiles returns all files that are contained within the specified piece
 // index.
-func (mfh *MultiFileHandler) GetFiles(piece int64) []filesd.EntryWrapper {
+func (mfh *MultiFileHandler) GetFiles(piece int64) []filesd.Entry {
 
 	hit := false
 	startIdx := 0

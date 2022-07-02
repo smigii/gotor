@@ -18,7 +18,7 @@ import (
 // are contained in a given piece.
 type SingleFileHandler struct {
 	tinfo  *info.TorInfo
-	fentry *fentry2.Entry
+	fentry *fentry2.EntryBase
 	rw     *readerWriter
 	bf     *bf.Bitfield
 }

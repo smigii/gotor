@@ -34,7 +34,7 @@ func TestFileSingle_Piece(t *testing.T) {
 			pieces := utils.SegmentData(tt.data, tt.piecelen)
 			hashes := utils.HashSlices(pieces)
 
-			fentry := []fentry2.Entry{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
+			fentry := []fentry2.EntryBase{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
 			testInfo, e := info.NewTorInfo("test", tt.piecelen, hashes, fentry)
 
 			sfh := NewSingleFileHandler(testInfo)
@@ -80,7 +80,7 @@ func TestFileSingle_Write(t *testing.T) {
 			pieces := utils.SegmentData(tt.data, tt.pieceLen)
 			hashes := utils.HashSlices(pieces)
 
-			fentry := []fentry2.Entry{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
+			fentry := []fentry2.EntryBase{fentry2.MakeFileEntry(tt.fpath, int64(len(tt.data)))}
 			testInfo, e := info.NewTorInfo("test", tt.pieceLen, hashes, fentry)
 
 			sfh := NewSingleFileHandler(testInfo)
