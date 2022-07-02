@@ -22,6 +22,35 @@ func TestMakePieceMap(t *testing.T) {
 		fentries []filesd.EntryBase
 		wantLoc  [][]testLocation
 	}{
+		// [A|A|A|A|A]
+		{"", 5, 5, []filesd.EntryBase{
+			filesd.MakeFileEntry("A", 5),
+		},
+			[][]testLocation{
+				{{"A", 0, 5}}, // Piece 0
+			},
+		},
+
+		// [A|A|A| | ]
+		{"", 5, 3, []filesd.EntryBase{
+			filesd.MakeFileEntry("A", 3),
+		},
+			[][]testLocation{
+				{{"A", 0, 3}}, // Piece 0
+			},
+		},
+
+		// [A|A|A] [A|A|A] [A|A| ]
+		{"", 3, 8, []filesd.EntryBase{
+			filesd.MakeFileEntry("A", 8),
+		},
+			[][]testLocation{
+				{{"A", 0, 3}}, // Piece 0
+				{{"A", 3, 3}}, // Piece 1
+				{{"A", 6, 2}}, // Piece 2
+			},
+		},
+
 		// [A|A|A]  [B|B|B]  [C|C|C]
 		{"", 3, 9, []filesd.EntryBase{
 			filesd.MakeFileEntry("A", 3),

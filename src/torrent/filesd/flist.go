@@ -33,3 +33,28 @@ func MakeFileList(entries []EntryBase, pieceLen int64) FileList {
 
 	return fl
 }
+
+// GetFiles returns all files that are contained within the specified piece
+// index.
+func (fl FileList) GetFiles(piece int64) []Entry {
+
+	hit := false
+	startIdx := 0
+	n := 0
+
+	for i, fe := range fl {
+		if fe.StartPiece() > piece {
+			break
+		}
+
+		if fe.StartPiece() <= piece && fe.EndPiece() >= piece {
+			if !hit {
+				startIdx = i
+				hit = true
+			}
+			n += 1
+		}
+	}
+
+	return fl[startIdx : startIdx+n]
+}

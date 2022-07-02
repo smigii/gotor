@@ -1,6 +1,7 @@
 package filesd
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -56,6 +57,72 @@ func TestMakeFileList(t *testing.T) {
 				checkField(t, "Start Piece Offset", tt.files[i].StartPieceOff(), fe.StartPieceOff())
 				checkField(t, "End Piece Offset", tt.files[i].EndPieceOff(), fe.EndPieceOff())
 			}
+		})
+	}
+}
+
+func TestFileList_GetFiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		piecelen int64
+		files    []EntryBase
+		kvp      map[int64][]string // Map piece index to file names that should be returned
+	}{
+		{"One Each", 3, []EntryBase{
+			MakeFileEntry("f1", 3),
+			MakeFileEntry("f2", 3),
+			MakeFileEntry("f3", 3),
+		}, map[int64][]string{
+			0: {"f1"},
+			1: {"f2"},
+			2: {"f3"},
+			3: {},
+		}},
+		{"Mix (up to 2)", 3, []EntryBase{
+			MakeFileEntry("f1", 4),
+			MakeFileEntry("f2", 6),
+			MakeFileEntry("f3", 2),
+		}, map[int64][]string{
+			0: {"f1"},
+			1: {"f1", "f2"},
+			2: {"f2"},
+			3: {"f2", "f3"},
+			4: {},
+		}},
+		{"Triple", 9, []EntryBase{
+			MakeFileEntry("f1", 3),
+			MakeFileEntry("f2", 3),
+			MakeFileEntry("f3", 3),
+		}, map[int64][]string{
+			0: {"f1", "f2", "f3"},
+			1: {},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			flist := MakeFileList(tt.files, tt.piecelen)
+
+			// Keys are piece indices, values are slices of file paths that
+			// should be in there
+			for k, v := range tt.kvp {
+
+				files := flist.GetFiles(k)
+
+				got := make([]string, 0, len(files))
+				for _, f := range files {
+					got = append(got, f.TorPath())
+				}
+
+				if len(files) != len(v) {
+					t.Errorf("GetFiles(%v)\n got: %v\nwant: %v", k, got, v)
+				}
+
+				if !reflect.DeepEqual(got, v) {
+					t.Errorf("GetFiles(%v)\n got: %v\nwant: %v", k, got, v)
+				}
+			}
+
 		})
 	}
 }

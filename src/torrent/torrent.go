@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"gotor/torrent/fileio"
 	"gotor/torrent/info"
 
 	"gotor/bencode"
@@ -28,7 +27,7 @@ func (te *TorError) Error() string {
 type Torrent struct {
 	infohash string
 	announce string
-	fhandle  fileio.FileHandler
+	info     *info.TorInfo
 }
 
 // ============================================================================
@@ -42,24 +41,17 @@ func (tor *Torrent) Announce() string {
 	return tor.announce
 }
 
-func (tor *Torrent) FileHandler() fileio.FileHandler {
-	return tor.fhandle
+func (tor *Torrent) Info() *info.TorInfo {
+	return tor.info
 }
 
 // ============================================================================
 // CONSTRUCTOR ================================================================
 
 func NewTorrent(info *info.TorInfo, announce string) (*Torrent, error) {
-	// Make FileHandler
-	var fh fileio.FileHandler
-	if len(info.Files()) == 1 {
-		fh = fileio.NewSingleFileHandler(info)
-	} else {
-		fh = fileio.NewMultiFileHandler(info)
-	}
 
 	// Compute infohash
-	bencoded := fh.TorInfo().Bencode()
+	bencoded := info.Bencode()
 	encoded, err := bencode.Encode(bencoded)
 	if err != nil {
 		return nil, err
@@ -69,7 +61,7 @@ func NewTorrent(info *info.TorInfo, announce string) (*Torrent, error) {
 	return &Torrent{
 		infohash: infohash,
 		announce: announce,
-		fhandle:  fh,
+		info:     info,
 	}, nil
 }
 
@@ -113,11 +105,7 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 		return nil, err
 	}
 
-	if torInfo.IsSingle() {
-		tor.fhandle = fileio.NewSingleFileHandler(torInfo)
-	} else {
-		tor.fhandle = fileio.NewMultiFileHandler(torInfo)
-	}
+	tor.info = torInfo
 
 	return &tor, nil
 }
@@ -126,23 +114,24 @@ func FromTorrentFile(torpath string, workingDir string) (*Torrent, error) {
 // MISC =======================================================================
 
 func (tor *Torrent) String() string {
-	torInfo := tor.fhandle.TorInfo()
 	strb := strings.Builder{}
 	prettyHash := hex.EncodeToString([]byte(tor.infohash))
 
 	strb.WriteString("Torrent Info:\n")
-	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", torInfo.Name()))
+	strb.WriteString(fmt.Sprintf("     Name: [%s]\n", tor.info.Name()))
 	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
-	plen, units := utils.Bytes4Humans(torInfo.PieceLen())
-	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", torInfo.NumPieces(), plen, units))
-	bsize, units := utils.Bytes4Humans(torInfo.Length())
+	plen, units := utils.Bytes4Humans(tor.info.PieceLen())
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", tor.info.NumPieces(), plen, units))
+	bsize, units := utils.Bytes4Humans(tor.info.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
 
-	if !torInfo.IsSingle() {
+	if !tor.info.IsSingle() {
 		strb.WriteString("\nFiles:\n")
-		for _, fe := range torInfo.Files() {
-			strb.WriteString(fe.TorPath())
+		for _, fe := range tor.info.Files() {
+			size, units2 := utils.Bytes4Humans(fe.Length())
+			sizestring := fmt.Sprintf("%v%v", size, units2)
+			strb.WriteString(fmt.Sprintf("%8s : %v", sizestring, fe.TorPath()))
 			strb.WriteByte('\n')
 		}
 	}

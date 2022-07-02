@@ -1,4 +1,4 @@
-package fileio
+package rw
 
 import (
 	"fmt"
@@ -36,14 +36,14 @@ func (pe *PathError) Error() string {
 // STRUCTS ====================================================================
 
 type readerWriter struct {
-	files []filesd.EntryBase
+	files filesd.FileList
 	ptrs  map[string]*os.File
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewReaderWriter(files []filesd.EntryBase) *readerWriter {
+func NewReaderWriter(files filesd.FileList) *readerWriter {
 	rw := readerWriter{
 		files: files,
 		ptrs:  make(map[string]*os.File),

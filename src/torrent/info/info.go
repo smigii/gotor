@@ -31,12 +31,11 @@ type TorInfo struct {
 	pieceLen  int64  `info:"piece length"`
 	hashes    string `info:"pieces"`
 	numPieces int64
-	length    int64              `info:"length"`
-	files     []filesd.EntryBase `info:"files"`
-	isSingle  bool               // Is this a single-file or multi-file torrent?
+	length    int64           `info:"length"`
+	flist     filesd.FileList `info:"files"`
+	isSingle  bool            // Is this a single-file or multi-file torrent?
 
-	flist filesd.FileList
-	pm    PieceMap
+	pm PieceMap
 }
 
 // ============================================================================
@@ -62,8 +61,8 @@ func (ti *TorInfo) Length() int64 {
 	return ti.length
 }
 
-func (ti *TorInfo) Files() []filesd.EntryBase {
-	return ti.files
+func (ti *TorInfo) Files() filesd.FileList {
+	return ti.flist
 }
 
 func (ti *TorInfo) IsSingle() bool {
@@ -159,59 +158,54 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry
 
 	flist := filesd.MakeFileList(files, pieceLen)
 
+	npieces := int64(len(hashes) / 20)
+	pm, e := MakePieceMap2(flist, npieces, pieceLen, length)
+	if e != nil {
+		return nil, e
+	}
+
 	return &TorInfo{
 		name:      name,
 		pieceLen:  pieceLen,
 		hashes:    hashes,
 		numPieces: int64(len(hashes) / 20),
 		length:    length,
-		files:     files,
+		flist:     flist,
 		isSingle:  len(files) == 1,
-
-		flist: flist,
+		pm:        pm,
 	}, nil
 
 }
 
 // FromDict creates and returns a new *TorInfo from the info dictionary of a
 // torrent file.
-// TODO: Read the values only, then pass to NewTorInfo
 func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
-	fdata := TorInfo{}
-	var err error
 
-	fdata.name, err = info.GetString("name")
+	name, err := info.GetString("name")
 	if err != nil {
 		return nil, err
 	}
 
-	fdata.pieceLen, err = info.GetInt("piece length")
+	pieceLen, err := info.GetInt("piece length")
 	if err != nil {
 		return nil, err
 	}
 
-	fdata.hashes, err = info.GetString("pieces")
+	hashes, err := info.GetString("pieces")
 	if err != nil {
 		return nil, err
 	}
-	if len(fdata.hashes)%20 != 0 {
-		return nil, &FileMetaError{
-			msg: fmt.Sprintf("'pieces' length must be multiple of 20, got length [%v]", len(fdata.hashes)),
-		}
-	}
-	fdata.numPieces = int64(len(fdata.hashes) / 20)
 
-	fdata.length, err = info.GetInt("length")
+	var fentries []filesd.EntryBase
+	length, err := info.GetInt("length")
 	if err == nil {
-		fdata.isSingle = true
 
-		fentry := filesd.MakeFileEntry(fdata.Name(), fdata.Length())
+		fentry := filesd.MakeFileEntry(name, length)
 		localPath := filepath.Join(workingDir, fentry.TorPath())
 		fentry.SetLocalPath(localPath)
-		fdata.files = []filesd.EntryBase{fentry}
+		fentries = []filesd.EntryBase{fentry}
 
 	} else {
-		fdata.isSingle = false
 
 		// Try 'files'
 		files, err := info.GetList("files")
@@ -222,13 +216,13 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 		}
 
 		// Read through list of file dictionaries
-		fdata.files, err = extractFileEntries(files, fdata.name)
+		fentries, err = extractFileEntries(files, name)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &fdata, nil
+	return NewTorInfo(name, pieceLen, hashes, fentries)
 }
 
 // ============================================================================
@@ -247,6 +241,7 @@ func (ti *TorInfo) PieceHash(idx int64) (string, error) {
 
 // extractFileEntries extracts the {path, length} dictionaries from a bencoded
 // list.
+// TODO: This should belong to filesd.FileList
 func extractFileEntries(benlist bencode.List, dirname string) ([]filesd.EntryBase, error) {
 	sfl := make([]filesd.EntryBase, 0, 4)
 

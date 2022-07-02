@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 
+	"gotor/bf"
 	"gotor/p2p"
 	"gotor/peer"
 	"gotor/torrent"
@@ -22,6 +23,7 @@ type Swarm struct {
 	Stats *tracker.Stats
 	Peers peer.List
 	Tor   *torrent.Torrent
+	Bf    *bf.Bitfield
 	Id    string
 	Port  uint16
 }
@@ -44,13 +46,12 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	}
 
 	// OCAT files
-	log.Printf("openning and validating files")
-	err = swarm.Tor.FileHandler().OCAT()
-	if err != nil {
-		return nil, err
-	}
+	//log.Printf("openning and validating files")
 
-	// TODO: Check Tor.FileHandler().Bitfield() to see how much is truly left
+	// TODO: Check bitfield to see how much is truly left
+	torInfo := swarm.Tor.Info()
+	swarm.Bf = bf.NewBitfield(torInfo.NumPieces())
+
 	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())  // Full leech
 	swarm.Stats = tracker.NewStats(0, 0, 0) // Seed
 
@@ -144,8 +145,7 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 	log.Printf("Sent %v handshake\n", c.RemoteAddr())
 
 	// Send bitfield
-	bf := s.Tor.FileHandler().Bitfield()
-	bfmsg := p2p.NewMsgBitfield(bf)
+	bfmsg := p2p.NewMsgBitfield(s.Bf)
 	_, e = c.Write(bfmsg.Encode())
 	if e != nil {
 		return nil, e
