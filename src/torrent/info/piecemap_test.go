@@ -98,7 +98,7 @@ func TestMakePieceMap(t *testing.T) {
 
 			npieces := filesd.CalcNumPieces(tt.fentries, tt.pieceLen)
 			flist := filesd.MakeFileList(tt.fentries, tt.pieceLen)
-			pm, e := MakePieceMap2(flist, npieces, tt.pieceLen, tt.totalLen)
+			pm, e := MakePieceMap(flist, npieces, tt.pieceLen, tt.totalLen)
 			test.CheckError(t, e)
 
 			// For each piece

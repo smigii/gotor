@@ -3,11 +3,17 @@ package test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func WriteTestFile(fpath string, data []byte) error {
+	e := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
+	if e != nil {
+		return e
+	}
+
 	f, e := os.OpenFile(fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0666)
 	if e != nil {
 		return e

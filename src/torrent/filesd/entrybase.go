@@ -1,6 +1,8 @@
 package filesd
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"gotor/bencode"
@@ -47,6 +49,45 @@ func MakeFileEntry(torPath string, length int64) EntryBase {
 		torPath:   torPath,
 		localPath: torPath,
 	}
+}
+
+func FromBenList(benlist bencode.List) ([]EntryBase, error) {
+	entries := make([]EntryBase, 0, 1)
+
+	for _, fEntry := range benlist {
+		fDict, ok := fEntry.(bencode.Dict)
+		if !ok {
+			return nil, errors.New("failed to convert file entry to dictionary")
+		}
+
+		fLen, err := fDict.GetInt("length")
+		if err != nil {
+			return nil, err
+		}
+
+		fPathList, err := fDict.GetList("path")
+		if err != nil {
+			return nil, err
+		}
+
+		// Read through list of path strings
+		strb := strings.Builder{}
+
+		for _, fPathEntry := range fPathList {
+			pathPiece, ok := fPathEntry.(string)
+			if !ok {
+				return nil, fmt.Errorf(fmt.Sprintf("file entry contains invalid path [%v]", fPathEntry))
+			}
+			strb.WriteString(pathPiece)
+			strb.WriteByte('/')
+		}
+		l := len(strb.String())
+
+		// exclude last '/'
+		entries = append(entries, MakeFileEntry(strb.String()[:l-1], fLen))
+	}
+
+	return entries, nil
 }
 
 func (fe *EntryBase) Bencode() bencode.Dict {

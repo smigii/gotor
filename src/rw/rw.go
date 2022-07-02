@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"gotor/torrent/filesd"
+	"gotor/torrent/info"
 	"gotor/utils"
 )
 
@@ -63,14 +64,23 @@ func (rw *readerWriter) Write(fpath string, seekAmnt int64, data []byte) error {
 	}
 }
 
-func (rw *readerWriter) Read(fpath string, seekAmnt int64, buf []byte) (int64, error) {
-	ptr, ok := rw.ptrs[fpath]
-	if ok {
-		n, e := ptr.ReadAt(buf, seekAmnt)
-		return int64(n), e
-	} else {
-		return 0, &PathError{fpath: fpath}
+func (rw *readerWriter) ReadReqs(pls []info.PieceLocation, buf []byte) (int64, error) {
+	off := int64(0)
+
+	for _, req := range pls {
+		ptr, ok := rw.ptrs[req.Path()]
+		if ok {
+			n, e := ptr.ReadAt(buf[off:off+req.ReadAmnt()], req.SeekAmnt())
+			if e != nil {
+				return 0, e
+			}
+			off += int64(n)
+		} else {
+			return 0, &PathError{fpath: req.Path()}
+		}
 	}
+
+	return off, nil
 }
 
 func (rw *readerWriter) Move(fromPath string, toPath string) error {

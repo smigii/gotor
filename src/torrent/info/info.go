@@ -132,6 +132,11 @@ func CreateTorInfo(paths []string, workingDir string, name string, pieceLen int6
 				buflen = 0
 			}
 		}
+
+		err := fptr.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Process anything remaining in the buffer
@@ -159,7 +164,7 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry
 	flist := filesd.MakeFileList(files, pieceLen)
 
 	npieces := int64(len(hashes) / 20)
-	pm, e := MakePieceMap2(flist, npieces, pieceLen, length)
+	pm, e := MakePieceMap(flist, npieces, pieceLen, length)
 	if e != nil {
 		return nil, e
 	}
@@ -216,7 +221,7 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 		}
 
 		// Read through list of file dictionaries
-		fentries, err = extractFileEntries(files, name)
+		fentries, err = filesd.FromBenList(files)
 		if err != nil {
 			return nil, err
 		}
@@ -237,56 +242,6 @@ func (ti *TorInfo) PieceHash(idx int64) (string, error) {
 
 	offset := idx * 20
 	return ti.hashes[offset : offset+20], nil
-}
-
-// extractFileEntries extracts the {path, length} dictionaries from a bencoded
-// list.
-// TODO: This should belong to filesd.FileList
-func extractFileEntries(benlist bencode.List, dirname string) ([]filesd.EntryBase, error) {
-	sfl := make([]filesd.EntryBase, 0, 4)
-
-	for _, fEntry := range benlist {
-		fDict, ok := fEntry.(bencode.Dict)
-		if !ok {
-			return nil, &FileMetaError{
-				msg: fmt.Sprintf("failed to convert file entry to dictionary\n%v", fEntry),
-			}
-		}
-
-		fLen, err := fDict.GetInt("length")
-		if err != nil {
-			return nil, err
-		}
-
-		fPathList, err := fDict.GetList("path")
-		if err != nil {
-			return nil, err
-		}
-
-		// Read through list of path strings
-		strb := strings.Builder{}
-
-		// Write the directory name
-		strb.WriteString(dirname)
-		strb.WriteByte('/')
-
-		for _, fPathEntry := range fPathList {
-			pathPiece, ok := fPathEntry.(string)
-			if !ok {
-				return nil, &FileMetaError{
-					msg: fmt.Sprintf("file entry contains invalid path [%v]", fEntry),
-				}
-			}
-			strb.WriteString(pathPiece)
-			strb.WriteByte('/')
-		}
-		l := len(strb.String())
-
-		// exclude last '/'
-		sfl = append(sfl, filesd.MakeFileEntry(strb.String()[:l-1], fLen))
-	}
-
-	return sfl, nil
 }
 
 func (ti *TorInfo) Bencode() bencode.Dict {
@@ -313,4 +268,17 @@ func (ti *TorInfo) Bencode() bencode.Dict {
 	}
 
 	return d
+}
+
+func (ti *TorInfo) PieceLookup(index int64) ([]PieceLocation, error) {
+
+	if index < 0 {
+		return nil, errors.New("negative index")
+	}
+
+	if index >= ti.numPieces {
+		return nil, errors.New("index out of bounds")
+	}
+
+	return ti.pm[index], nil
 }
