@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"gotor/bf"
 	"gotor/p2p"
@@ -14,6 +15,11 @@ import (
 	"gotor/torrent/fileio"
 	"gotor/tracker"
 	"gotor/utils"
+)
+
+const (
+	KeepAliveTimer   = 60 * time.Second
+	KeepAliveTimeout = 120 * time.Second
 )
 
 // ============================================================================
@@ -66,7 +72,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 		return nil, e
 	}
 	_bf := swarm.Bf
-	pcent := float64(_bf.Nset()) / float64(_bf.Nbits())
+	pcent := 100 * float64(_bf.Nset()) / float64(_bf.Nbits())
 	log.Printf("have %v/%v (%v%%) pieces", _bf.Nset(), _bf.Nbits(), pcent)
 
 	// TODO: Compute remaining bytes left
@@ -197,7 +203,25 @@ func (s *Swarm) incomingPeer(c net.Conn) (*peer.Peer, error) {
 	return newPeer, nil
 }
 
+func pingLoop(peer *peer.Peer) {
+	ticker := time.NewTicker(KeepAliveTimer)
+	ka := p2p.KeepAliveSingleton
+	data := ka.Encode()
+	for {
+		select {
+		case <-ticker.C:
+			_, e := peer.Conn.Write(data)
+			if e != nil {
+				panic(e)
+			}
+			log.Printf("sent keep alive to %v", peer.Id())
+		}
+	}
+}
+
 func (s *Swarm) HandlePeer(peer *peer.Peer) {
+
+	go pingLoop(peer)
 
 	// For now, just unchoke everyone
 	msg := p2p.NewMsgUnchoke()
@@ -206,25 +230,55 @@ func (s *Swarm) HandlePeer(peer *peer.Peer) {
 		log.Printf("error unchoking: %v\n", e)
 	}
 
-	buf := make([]byte, 4096)
+	recvBuf := make([]byte, 4096)
+
 	for {
-		n, e := peer.Conn.Read(buf)
+		n, e := peer.Conn.Read(recvBuf)
 		if n == 0 || e != nil {
 			log.Printf("Peer dead %v", peer.Conn.RemoteAddr())
 			break
 		}
 
 		fmt.Printf("\n--- MESSAGE ---\n")
-		fmt.Println(buf[:n])
+		fmt.Println(recvBuf[:n])
 		fmt.Printf("--- END ---\n\n")
 
-		dar := p2p.DecodeAll(buf[:n])
+		dar := p2p.DecodeAll(recvBuf[:n])
 		pcent := 100.0 * float32(dar.Read) / float32(n)
 		log.Printf("Decoded %v/%v (%v%%) bytes from %v\n\n", dar.Read, n, pcent, peer.Conn.RemoteAddr())
 		for _, msg := range dar.Msgs {
 			fmt.Printf("%v\n\n", msg.String())
+			switch msg.Mtype() {
+			case p2p.TypeRequest:
+				mreq := msg.(*p2p.MsgRequest)
+				e := s.handleRequest(peer, mreq)
+				if e != nil {
+					panic(e)
+				}
+			}
 		}
 	}
+}
+
+func (s *Swarm) handleRequest(peer *peer.Peer, req *p2p.MsgRequest) error {
+	// TODO: This is so inefficient it hurts
+	torInfo := s.Tor.Info()
+	idx := int64(req.Index())
+	if s.Bf.Complete() || s.Bf.Get(idx) {
+		buf := make([]byte, torInfo.PieceLen(), torInfo.PieceLen())
+		_, e := s.Fileio.ReadPiece(idx, s.Tor.Info(), buf)
+		if e != nil {
+			return e
+		}
+		subdata := buf[req.Begin() : req.Begin()+req.ReqLen()]
+		mPiece := p2p.NewMsgPiece(req.Index(), req.Begin(), subdata)
+		_, e = peer.Conn.Write(mPiece.Encode())
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
 }
 
 // bootstrap

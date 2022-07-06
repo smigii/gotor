@@ -225,6 +225,13 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Modify local path
+		workingDir = filepath.Join(workingDir, name) // Torrent paths don't include base dir
+		for i, fe := range fentries {
+			localPath := filepath.Join(workingDir, fe.TorPath())
+			fentries[i].SetLocalPath(localPath)
+		}
 	}
 
 	return NewTorInfo(name, pieceLen, hashes, fentries)
