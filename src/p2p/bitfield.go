@@ -66,7 +66,7 @@ func DecodeMsgBitfield(fullmsg []byte, msglen uint32) (*MsgBitfield, error) {
 	nbytes := int64(4 + msglen)
 	nbits := int64(msglen-1) * 8
 
-	// We need to make a copy of the data since. Since we do not want to be
+	// We need to make a copy of the data since we do not want to be
 	// allocating a new []byte during whatever conn.recv() loop, simply
 	// passing the slice to the bitfield means any changes to the buffer
 	// passed to recv() will overwrite the bitfield
