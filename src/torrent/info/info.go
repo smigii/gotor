@@ -233,15 +233,9 @@ func FromDict(info bencode.Dict, workingDir string) (*TorInfo, error) {
 // ============================================================================
 // FUNC =======================================================================
 
-func (ti *TorInfo) PieceHash(idx int64) (string, error) {
-	if idx >= ti.numPieces {
-		return "", &FileMetaError{
-			msg: fmt.Sprintf("requested piece index [%v], max is [%v]", idx, ti.numPieces-1),
-		}
-	}
-
+func (ti *TorInfo) PieceHash(idx int64) string {
 	offset := idx * 20
-	return ti.hashes[offset : offset+20], nil
+	return ti.hashes[offset : offset+20]
 }
 
 func (ti *TorInfo) Bencode() bencode.Dict {

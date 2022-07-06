@@ -11,6 +11,7 @@ import (
 	"gotor/p2p"
 	"gotor/peer"
 	"gotor/torrent"
+	"gotor/torrent/fileio"
 	"gotor/tracker"
 	"gotor/utils"
 )
@@ -19,13 +20,14 @@ import (
 // STRUCTS ====================================================================
 
 type Swarm struct {
-	State *tracker.State
-	Stats *tracker.Stats
-	Peers peer.List
-	Tor   *torrent.Torrent
-	Bf    *bf.Bitfield
-	Id    string
-	Port  uint16
+	State  *tracker.State
+	Stats  *tracker.Stats
+	Peers  peer.List
+	Tor    *torrent.Torrent
+	Fileio *fileio.FileIO
+	Bf     *bf.Bitfield
+	Id     string
+	Port   uint16
 }
 
 // ============================================================================
@@ -45,13 +47,29 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 		return nil, err
 	}
 
-	// OCAT files
-	//log.Printf("openning and validating files")
-
-	// TODO: Check bitfield to see how much is truly left
 	torInfo := swarm.Tor.Info()
-	swarm.Bf = bf.NewBitfield(torInfo.NumPieces())
 
+	// Make the FileIO handler
+	swarm.Fileio = fileio.NewFileIO()
+
+	// OCAT files
+	log.Printf("openning and validating files")
+	e := swarm.Fileio.OCATAll(torInfo.Files())
+	if e != nil {
+		return nil, e
+	}
+
+	// Make bitfield
+	swarm.Bf = bf.NewBitfield(torInfo.NumPieces())
+	e = swarm.Validate()
+	if e != nil {
+		return nil, e
+	}
+	_bf := swarm.Bf
+	pcent := float64(_bf.Nset()) / float64(_bf.Nbits())
+	log.Printf("have %v/%v (%v%%) pieces", _bf.Nset(), _bf.Nbits(), pcent)
+
+	// TODO: Compute remaining bytes left
 	//swarm.Stats = tracker.NewStats(0, 0, swarm.Tor.Length())  // Full leech
 	swarm.Stats = tracker.NewStats(0, 0, 0) // Seed
 
@@ -66,6 +84,28 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	swarm.Peers = resp.Peers
 
 	return &swarm, nil
+}
+
+func (s *Swarm) Validate() error {
+
+	torInfo := s.Tor.Info()
+	buf := make([]byte, torInfo.PieceLen(), torInfo.PieceLen())
+
+	var i int64
+	for i = 0; i < torInfo.NumPieces(); i++ {
+
+		n, e := s.Fileio.ReadPiece(i, torInfo, buf)
+		if e != nil {
+			return e
+		}
+
+		knownHash := torInfo.PieceHash(i)
+		gotHash := utils.SHA1(buf[:n])
+		eq := knownHash == gotHash
+		s.Bf.Set(i, eq)
+	}
+
+	return nil
 }
 
 func (s *Swarm) Start() {

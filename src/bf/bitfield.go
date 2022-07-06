@@ -152,3 +152,7 @@ func (bf *Bitfield) Nbits() int64 {
 func (bf *Bitfield) Nbytes() int64 {
 	return bf.nbytes
 }
+
+func (bf *Bitfield) Nset() int64 {
+	return bf.nset
+}
