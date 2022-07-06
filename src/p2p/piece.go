@@ -9,6 +9,10 @@ import (
 // MsgPieceMinPayloadLen is the minimum length of a piece message's payload
 const MsgPieceMinPayloadLen = uint32(8)
 
+// MsgPieceMinTotalLen is the minimum total length, which includes
+// <LEN 4><ID 1><INDEX 4><BEGIN 4>
+const MsgPieceMinTotalLen = uint32(13)
+
 // ============================================================================
 // TYPES ======================================================================
 
@@ -26,7 +30,7 @@ func NewMsgPiece(index uint32, begin uint32, block []byte) *MsgPiece {
 	return &MsgPiece{
 		msgBase: msgBase{
 			length: uint32(1 + int(MsgPieceMinPayloadLen) + len(block)),
-			mtype:  TypeHave,
+			mtype:  TypePiece,
 		},
 		index: index,
 		begin: begin,
@@ -53,9 +57,10 @@ func (mp *MsgPiece) Block() []byte {
 // IMPL =======================================================================
 
 func (mp *MsgPiece) Encode() []byte {
-	pl := mp.msgBase.Encode()
-	binary.BigEndian.PutUint32(pl, mp.index)
-	binary.BigEndian.PutUint32(pl, mp.begin)
+	pl := make([]byte, MsgPieceMinTotalLen, int(MsgPieceMinTotalLen)+len(mp.block))
+	mp.msgBase.fillBase(pl)
+	binary.BigEndian.PutUint32(pl[PayloadStart:], mp.index)
+	binary.BigEndian.PutUint32(pl[PayloadStart+4:], mp.begin)
 	pl = append(pl, mp.block...)
 	return pl
 }
