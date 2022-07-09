@@ -10,19 +10,24 @@ type Peer struct {
 	id           string
 	ip           net.IP
 	port         uint16
-	Conn         net.Conn
+	addr         string
 	chokingUs    bool // Peer is choking us
 	weChoking    bool // We are choking peer
 	interestedUs bool // Peer is interested in us
 	weInterested bool // We are interested in peer
-	bitfield     []byte
 }
 
 func NewPeer(id string, ip net.IP, port uint16) *Peer {
+	strb := strings.Builder{}
+	strb.WriteString(ip.String())
+	strb.WriteByte(':')
+	strb.WriteString(fmt.Sprintf("%v", port))
+
 	return &Peer{
 		id:           id,
 		ip:           ip,
 		port:         port,
+		addr:         strb.String(),
 		chokingUs:    true,
 		weChoking:    true,
 		interestedUs: false,
@@ -43,11 +48,7 @@ func (p Peer) Port() uint16 {
 }
 
 func (p *Peer) Addr() string {
-	strb := strings.Builder{}
-	strb.WriteString(p.ip.String())
-	strb.WriteByte(':')
-	strb.WriteString(fmt.Sprintf("%v", p.Port()))
-	return strb.String()
+	return p.addr
 }
 
 func (p *Peer) ChokingUs() bool {

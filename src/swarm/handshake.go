@@ -34,3 +34,24 @@ func (hs Handshake) Infohash() []byte {
 func (hs Handshake) Id() []byte {
 	return hs[48:68]
 }
+
+func Validate(hs Handshake, infohash string) bool {
+
+	if len(hs) != int(HandshakeLen) {
+		return false
+	}
+
+	if hs.Pstrlen() != HandshakePstrLen {
+		return false
+	}
+
+	if string(hs.Pstr()) != HandshakePstr {
+		return false
+	}
+
+	if string(hs.Infohash()) != infohash {
+		return false
+	}
+
+	return true
+}
