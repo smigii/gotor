@@ -13,10 +13,11 @@ import (
 )
 
 type PeerHandler struct {
-	peer  *peer.Peer
-	conn  net.Conn
-	swarm *Swarm
-	wg    sync.WaitGroup
+	peerInfo  peer.Peer
+	peerState peer.State
+	conn      net.Conn
+	swarm     *Swarm
+	wg        sync.WaitGroup
 }
 
 const (
@@ -26,8 +27,8 @@ const (
 
 // Bootstrap creates a TCP connection with the peer, then sends the BitTorrent
 // handshake.
-func Bootstrap(peer *peer.Peer, swarm *Swarm) (*PeerHandler, error) {
-	conn, e := net.Dial("tcp", peer.Addr())
+func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
+	conn, e := net.Dial("tcp", pInfo.Addr())
 
 	if e != nil {
 		return nil, e
@@ -41,9 +42,9 @@ func Bootstrap(peer *peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 	}
 
 	return &PeerHandler{
-		peer:  peer,
-		conn:  conn,
-		swarm: swarm,
+		peerInfo: pInfo,
+		conn:     conn,
+		swarm:    swarm,
 	}, nil
 }
 
@@ -88,11 +89,11 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 	}
 	log.Printf("Sent %v bitfield\n", c.RemoteAddr())
 
-	newPeer := peer.NewPeer(string(peerHs.Id()), tcpAddr.IP, uint16(tcpAddr.Port))
+	newPeer := peer.MakePeer(string(peerHs.Id()), tcpAddr.IP, uint16(tcpAddr.Port))
 	return &PeerHandler{
-		peer:  newPeer,
-		conn:  c,
-		swarm: swarm,
+		peerInfo: newPeer,
+		conn:     c,
+		swarm:    swarm,
 	}, nil
 }
 
@@ -129,7 +130,7 @@ func (ph *PeerHandler) Start() {
 		// We will fine-tune this later
 		case e = <-errChan:
 			done = true
-			log.Printf("error peer %v (killing): %v", ph.peer.Addr(), e)
+			log.Printf("error peer %v (killing): %v", ph.peerInfo.Addr(), e)
 			killChan <- true
 			_ = ph.cancelRecvLoop()
 			ph.wg.Wait()
@@ -139,7 +140,7 @@ func (ph *PeerHandler) Start() {
 		}
 	}
 
-	log.Printf("peer %v done", ph.peer.Addr())
+	log.Printf("peer %v done", ph.peerInfo.Addr())
 }
 
 // recvLoop handles reading in data from the peer and handling replies.
@@ -157,9 +158,9 @@ func (ph *PeerHandler) recvLoop(errChan chan<- error) {
 
 	ph.wg.Add(1)
 	defer ph.wg.Done()
-	defer log.Printf("end recvLoop %v", ph.peer.Addr())
+	defer log.Printf("end recvLoop %v", ph.peerInfo.Addr())
 
-	log.Printf("start recvLoop %v", ph.peer.Addr())
+	log.Printf("start recvLoop %v", ph.peerInfo.Addr())
 
 	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
 	recvBuf := make([]byte, 16384)
@@ -182,7 +183,7 @@ func (ph *PeerHandler) recvLoop(errChan chan<- error) {
 
 		dar := p2p.DecodeAll(recvBuf[:n])
 		pcent := 100.0 * float32(dar.Read) / float32(n)
-		log.Printf("Decoded %v/%v (%v%%) bytes from %v\n", dar.Read, n, pcent, ph.peer.Addr())
+		log.Printf("Decoded %v/%v (%v%%) bytes from %v\n", dar.Read, n, pcent, ph.peerInfo.Addr())
 		for _, msg := range dar.Msgs {
 			//fmt.Printf("%v\n\n", msg.String())
 			switch msg.Mtype() {
@@ -204,11 +205,11 @@ func (ph *PeerHandler) pingLoop(errChan chan<- error, killChan <-chan bool) {
 
 	ph.wg.Add(1)
 	defer ph.wg.Done()
-	defer log.Printf("end pingLoop %v", ph.peer.Addr())
+	defer log.Printf("end pingLoop %v", ph.peerInfo.Addr())
 
-	log.Printf("start pingLoop %v", ph.peer.Addr())
+	log.Printf("start pingLoop %v", ph.peerInfo.Addr())
 
-	addr := ph.peer.Addr()
+	addr := ph.peerInfo.Addr()
 	ticker := time.NewTicker(SendKeepAlive)
 	ka := p2p.KeepAliveSingleton
 	data := ka.Encode()

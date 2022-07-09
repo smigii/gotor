@@ -3,14 +3,15 @@ package tracker
 import (
 	"encoding/binary"
 	"fmt"
-	"gotor/bencode"
-	"gotor/peer"
-	"gotor/torrent"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"gotor/bencode"
+	"gotor/peer"
+	"gotor/torrent"
 )
 
 // ============================================================================
@@ -198,7 +199,7 @@ func newResponse(dict bencode.Dict) (*Response, error) {
 // IMPLEMENT INTERFACE ========================================================
 
 // Define 2 new ways to add peers to a peer list using the interface from
-// peerlist.go; using strings and using bencoded lists
+// list.go; using strings and using bencoded lists
 
 type stringSource string
 
@@ -214,7 +215,7 @@ func (s stringSource) GetPeers() (peer.List, error) {
 		start := i * 6
 		ip := net.IPv4(s[start], s[start+1], s[start+2], s[start+3])
 		port := binary.BigEndian.Uint16([]byte(s[start+4 : start+6]))
-		peerList = append(peerList, peer.NewPeer("", ip, port))
+		peerList = append(peerList, peer.MakePeer("", ip, port))
 	}
 
 	return peerList, nil
@@ -243,7 +244,7 @@ func (l listSource) GetPeers() (peer.List, error) {
 		if err != nil {
 			return nil, err
 		}
-		peerList = append(peerList, peer.NewPeer(id, net.ParseIP(ip), uint16(port)))
+		peerList = append(peerList, peer.MakePeer(id, net.ParseIP(ip), uint16(port)))
 	}
 	return peerList, nil
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-type List []*Peer
+type List []Peer
 
 // ListSource
 // Any type that can extract a list of peers from itself.
