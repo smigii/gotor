@@ -10,20 +10,30 @@ import (
 
 	"gotor/p2p"
 	"gotor/peer"
+	"gotor/utils/netread"
 )
+
+const (
+	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
+	RecvBufSize = 16384
+
+	GetKeepAlive  = 120 * time.Second
+	SendKeepAlive = 60 * time.Second
+)
+
+// ============================================================================
+// STRUCTS ====================================================================
 
 type PeerHandler struct {
 	peerInfo  peer.Peer
 	peerState peer.State
 	conn      net.Conn
 	swarm     *Swarm
-	wg        sync.WaitGroup
+	procs     sync.WaitGroup // How many loops are running for this handler
 }
 
-const (
-	GetKeepAlive  = 120 * time.Second
-	SendKeepAlive = 60 * time.Second
-)
+// ============================================================================
+// FUNK =======================================================================
 
 // Bootstrap creates a TCP connection with the peer, then sends the BitTorrent
 // handshake.
@@ -103,10 +113,10 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 func (ph *PeerHandler) Start() {
 
 	// Any goroutines spawned should report errors on this chan
-	errChan := make(chan error)
+	chErr := make(chan error)
 
 	// Use to stop to all spawned goroutines
-	killChan := make(chan bool)
+	chDone := make(chan bool)
 
 	// For now, just unchoke everyone
 	msg := p2p.NewMsgUnchoke()
@@ -115,9 +125,9 @@ func (ph *PeerHandler) Start() {
 		log.Printf("error unchoking: %v\n", e)
 	}
 
-	go ph.pingLoop(errChan, killChan)
+	go ph.pingLoop(chErr, chDone)
 
-	go ph.recvLoop(errChan)
+	go ph.recvLoop(chErr, chDone)
 
 	done := false
 	for {
@@ -128,12 +138,11 @@ func (ph *PeerHandler) Start() {
 		select {
 		// For now, just kill ourselves if we receive any error.
 		// We will fine-tune this later
-		case e = <-errChan:
+		case e = <-chErr:
 			done = true
 			log.Printf("error peer %v (killing): %v", ph.peerInfo.Addr(), e)
-			killChan <- true
-			_ = ph.cancelRecvLoop()
-			ph.wg.Wait()
+			chDone <- true
+			ph.procs.Wait()
 			// We will eventually wrap this in a struct so that we can
 			// tell the main loop which PeerHandler has errored
 			ph.swarm.ChErr <- e
@@ -144,8 +153,8 @@ func (ph *PeerHandler) Start() {
 }
 
 // recvLoop handles reading in data from the peer and handling replies.
-// To terminate the loop, call cancelRecvLoop. TODO: I don't like this
-func (ph *PeerHandler) recvLoop(errChan chan<- error) {
+// To terminate the loop, call cancelRecvLoop.
+func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	// TODO: Should probably handle split messages
 	// What if we need to recv more than we can handle?
 	// 1. Decode all messages
@@ -156,55 +165,42 @@ func (ph *PeerHandler) recvLoop(errChan chan<- error) {
 	//    append new data to previous data and try decoding all again.
 	// 4. Rinse repeat.
 
-	ph.wg.Add(1)
-	defer ph.wg.Done()
-	defer log.Printf("end recvLoop %v", ph.peerInfo.Addr())
+	ph.procs.Add(1)
+	defer ph.procs.Done()
 
+	defer log.Printf("end recvLoop %v", ph.peerInfo.Addr())
 	log.Printf("start recvLoop %v", ph.peerInfo.Addr())
 
-	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
-	recvBuf := make([]byte, 16384)
+	readLoop := netread.NewReadLoop(RecvBufSize, ph.conn, GetKeepAlive)
+	go readLoop.Run()
 
-	for {
+	var e error
+	done := false
+	for !done {
 
-		// Check for data. If we don't hear from them within GetKeepAlive time,
-		// assume peer has suffered a tragic fate.
-		e := ph.conn.SetReadDeadline(time.Now().Add(GetKeepAlive))
+		select {
+		case buf := <-readLoop.ReadChBuf():
+			e = ph.handleMessage(buf)
+			readLoop.Ready()
+		case e = <-readLoop.ReadChErr():
+			done = true
+		case <-chKill:
+			readLoop.Finish()
+			done = true
+		}
+
 		if e != nil {
-			errChan <- e
-			break
-		}
-
-		n, e := ph.conn.Read(recvBuf)
-		if n == 0 || e != nil {
-			errChan <- e
-			break
-		}
-
-		dar := p2p.DecodeAll(recvBuf[:n])
-		pcent := 100.0 * float32(dar.Read) / float32(n)
-		log.Printf("Decoded %v/%v (%v%%) bytes from %v\n", dar.Read, n, pcent, ph.peerInfo.Addr())
-		for _, msg := range dar.Msgs {
-			//fmt.Printf("%v\n\n", msg.String())
-			switch msg.Mtype() {
-			case p2p.TypeRequest:
-				mreq := msg.(*p2p.MsgRequest)
-				e = ph.handleRequest(mreq)
-			}
-
-			if e != nil {
-				errChan <- e
-				break
-			}
+			chErr <- e
+			done = true
 		}
 	}
 }
 
 // pingLoop sends a keep alive message to the peer at a set interval.
-func (ph *PeerHandler) pingLoop(errChan chan<- error, killChan <-chan bool) {
+func (ph *PeerHandler) pingLoop(chErr chan<- error, chDone <-chan bool) {
 
-	ph.wg.Add(1)
-	defer ph.wg.Done()
+	ph.procs.Add(1)
+	defer ph.procs.Done()
 	defer log.Printf("end pingLoop %v", ph.peerInfo.Addr())
 
 	log.Printf("start pingLoop %v", ph.peerInfo.Addr())
@@ -213,26 +209,20 @@ func (ph *PeerHandler) pingLoop(errChan chan<- error, killChan <-chan bool) {
 	ticker := time.NewTicker(SendKeepAlive)
 	ka := p2p.KeepAliveSingleton
 	data := ka.Encode()
-	done := false
 
+	done := false
 	for !done {
 		select {
 		case <-ticker.C:
 			_, e := ph.conn.Write(data)
 			if e != nil {
-				errChan <- e
+				chErr <- e
 				log.Printf("error with keep alive to %v", addr)
 				done = true
 			}
 			log.Printf("sent keep alive to %v", addr)
-		case <-killChan:
+		case <-chDone:
 			done = true
 		}
 	}
-}
-
-func (ph *PeerHandler) cancelRecvLoop() error {
-	// Set the cancel time to now. Rather than using time.Now() which involves
-	// a syscall, use Unix(1,0)
-	return ph.conn.SetReadDeadline(time.Unix(1, 0))
 }
