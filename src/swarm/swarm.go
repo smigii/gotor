@@ -119,7 +119,7 @@ func (s *Swarm) Start() {
 			if e != nil {
 				log.Printf("failed to bootstrap %v : %v", peer.Addr(), e)
 			} else {
-				ph.Start()
+				ph.Loop()
 			}
 		}(p)
 	}
@@ -149,7 +149,7 @@ func (s *Swarm) listen() {
 				log.Println(e)
 			} else {
 				phs = append(phs, ph)
-				ph.Start()
+				ph.Loop()
 			}
 		}(conn)
 	}

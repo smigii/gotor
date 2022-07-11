@@ -17,8 +17,9 @@ const (
 	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
 	RecvBufSize = 16384
 
-	GetKeepAlive  = 120 * time.Second
-	SendKeepAlive = 60 * time.Second
+	GetKeepAlive     = 120 * time.Second
+	SendKeepAlive    = 60 * time.Second
+	HandshakeTimeout = 1 * time.Second
 )
 
 // ============================================================================
@@ -70,9 +71,14 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 
 	buf := make([]byte, HandshakeLen)
 
-	// TODO: Set timeout
+	// Set timeout
+	e := c.SetReadDeadline(time.Now().Add(HandshakeTimeout))
+	if e != nil {
+		return nil, e
+	}
+
 	// Read the handshake
-	_, e := c.Read(buf)
+	_, e = c.Read(buf)
 	if e != nil {
 		return nil, e
 	}
@@ -81,7 +87,7 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 		_ = c.Close() // TODO: Handle?
 		return nil, fmt.Errorf("bad peer handshake")
 	}
-	log.Printf("good handshake @ %v", c.RemoteAddr())
+	log.Printf("good handshake from %v", c.RemoteAddr())
 
 	// Send handshake
 	hs := MakeHandshake(swarm.Tor.Infohash(), swarm.Id)
@@ -110,7 +116,7 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 // ============================================================================
 // ============================================================================
 
-func (ph *PeerHandler) Start() {
+func (ph *PeerHandler) Loop() {
 
 	// Any goroutines spawned should report errors on this chan
 	chErr := make(chan error)
