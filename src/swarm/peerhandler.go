@@ -13,6 +13,16 @@ import (
 	"gotor/utils/netread"
 )
 
+/* ============================================================================
+ * TODO: Refactor
+ * - Shouldn't need a pointer to the parent swarm, only the channels
+ * - Shouldn't need a pointer to the parent TorInfo, only the FileIO object
+ *   - Refactor FileIO so that its constructor takes the TorInfo, not the Read
+ *     or WritePiece methods.
+ * - Will need an error channel and a have channel, to tell swarm that we have
+ *   downloaded a new piece.
+ * ========================================================================= */
+
 const (
 	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
 	RecvBufSize = 16384
