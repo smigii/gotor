@@ -75,7 +75,7 @@ func TestFileIO_ReadPiece(t *testing.T) {
 			test.CheckError(t, e)
 
 			// OCAT files, defer cleanup
-			fileio := NewFileIO()
+			fileio := NewFileIO(torInfo)
 			e = fileio.OCATAll(torInfo.Files())
 			defer func() {
 				err := fileio.CloseAll()
@@ -87,7 +87,7 @@ func TestFileIO_ReadPiece(t *testing.T) {
 			buf := make([]byte, tt.piecelen, tt.piecelen)
 			for i, p := range pieces {
 
-				n, e := fileio.ReadPiece(int64(i), torInfo, buf)
+				n, e := fileio.ReadPiece(int64(i), buf)
 				test.CheckError(t, e)
 
 				if !bytes.Equal(p, buf[:n]) {
@@ -170,7 +170,7 @@ func TestFileIO_WritePiece(t *testing.T) {
 			test.CheckFatal(t, e)
 
 			// OCAT files, defer cleanup
-			fileio := NewFileIO()
+			fileio := NewFileIO(torInfo)
 			e = fileio.OCATAll(torInfo.Files())
 			defer func() {
 				err := fileio.CloseAll()
@@ -180,7 +180,7 @@ func TestFileIO_WritePiece(t *testing.T) {
 
 			// Write all the pieces
 			for i, piece := range pieces {
-				_, e = fileio.WritePiece(int64(i), torInfo, piece)
+				_, e = fileio.WritePiece(int64(i), piece)
 				test.CheckError(t, e)
 			}
 
@@ -188,7 +188,7 @@ func TestFileIO_WritePiece(t *testing.T) {
 			buf := make([]byte, tt.piecelen, tt.piecelen)
 			for i, piece := range pieces {
 
-				n, e := fileio.ReadPiece(int64(i), torInfo, buf)
+				n, e := fileio.ReadPiece(int64(i), buf)
 				test.CheckError(t, e)
 
 				if !bytes.Equal(piece, buf[:n]) {

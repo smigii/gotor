@@ -31,15 +31,17 @@ type lockedFp struct {
 }
 
 type FileIO struct {
-	lfps map[string]*lockedFp
+	lfps    map[string]*lockedFp
+	torInfo *info.TorInfo
 }
 
 // ============================================================================
 // FUNC =======================================================================
 
-func NewFileIO() *FileIO {
+func NewFileIO(torInfo *info.TorInfo) *FileIO {
 	return &FileIO{
-		lfps: make(map[string]*lockedFp),
+		lfps:    make(map[string]*lockedFp),
+		torInfo: torInfo,
 	}
 }
 
@@ -140,9 +142,9 @@ func (fio *FileIO) read(fpath string, seekAmnt int64, buf []byte) (int64, error)
 	}
 }
 
-func (fio *FileIO) ReadPiece(index int64, torInfo *info.TorInfo, buf []byte) (int64, error) {
+func (fio *FileIO) ReadPiece(index int64, buf []byte) (int64, error) {
 
-	plocs, e := torInfo.PieceLookup(index)
+	plocs, e := fio.torInfo.PieceLookup(index)
 	if e != nil {
 		return 0, e
 	}
@@ -160,14 +162,14 @@ func (fio *FileIO) ReadPiece(index int64, torInfo *info.TorInfo, buf []byte) (in
 	return offset, nil
 }
 
-func (fio *FileIO) WritePiece(index int64, torInfo *info.TorInfo, data []byte) (int64, error) {
+func (fio *FileIO) WritePiece(index int64, data []byte) (int64, error) {
 
-	plocs, e := torInfo.PieceLookup(index)
+	plocs, e := fio.torInfo.PieceLookup(index)
 	if e != nil {
 		return 0, e
 	}
 
-	knownHash := torInfo.PieceHash(index)
+	knownHash := fio.torInfo.PieceHash(index)
 
 	if utils.SHA1(data) != knownHash {
 		return 0, errors.New("invalid hash, refusing write")

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"gotor/bf"
+	"gotor/io"
+
 	"gotor/peer"
 	"gotor/torrent"
 	"gotor/torrent/fileio"
@@ -23,6 +25,7 @@ type Swarm struct {
 	Peers  peer.List
 	Tor    *torrent.Torrent
 	Fileio *fileio.FileIO
+	RLIO   *io.RateLimitIO
 	Bf     *bf.Bitfield
 	Id     string
 	Port   uint16
@@ -50,7 +53,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	torInfo := swarm.Tor.Info()
 
 	// Make the FileIO handler
-	swarm.Fileio = fileio.NewFileIO()
+	swarm.Fileio = fileio.NewFileIO(torInfo)
 
 	// OCAT files
 	log.Printf("openning and validating files")
@@ -82,6 +85,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 
 	swarm.State = resp.State
 	swarm.Peers = resp.Peers
+	swarm.RLIO = io.NewRateLimitIO()
 
 	return &swarm, nil
 }
@@ -94,7 +98,7 @@ func (s *Swarm) Validate() error {
 	var i int64
 	for i = 0; i < torInfo.NumPieces(); i++ {
 
-		n, e := s.Fileio.ReadPiece(i, torInfo, buf)
+		n, e := s.Fileio.ReadPiece(i, buf)
 		if e != nil {
 			return e
 		}
@@ -111,6 +115,7 @@ func (s *Swarm) Validate() error {
 func (s *Swarm) Start() {
 
 	go s.listen()
+	go s.RLIO.Run()
 
 	// Start peer Goroutines
 	for _, p := range s.Peers {

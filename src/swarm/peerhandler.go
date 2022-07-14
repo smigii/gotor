@@ -13,16 +13,6 @@ import (
 	"gotor/utils/netread"
 )
 
-/* ============================================================================
- * TODO: Refactor
- * - Shouldn't need a pointer to the parent swarm, only the channels
- * - Shouldn't need a pointer to the parent TorInfo, only the FileIO object
- *   - Refactor FileIO so that its constructor takes the TorInfo, not the Read
- *     or WritePiece methods.
- * - Will need an error channel and a have channel, to tell swarm that we have
- *   downloaded a new piece.
- * ========================================================================= */
-
 const (
 	// NOTE: qBittorrent seems to send a maximum of 8572 bytes per message
 	RecvBufSize = 16384
@@ -38,9 +28,18 @@ const (
 type PeerHandler struct {
 	peerInfo  peer.Peer
 	peerState peer.State
-	conn      net.Conn
 	swarm     *Swarm
-	procs     sync.WaitGroup // How many loops are running for this handler
+	conn      net.Conn
+	chErr     chan<- error // Report errors
+	//chReq      <-chan int64    // Pieces we should request from peer
+	//chGot      chan<- Got      // Pieces we have successfully written
+	procs sync.WaitGroup // How many loops are running for this handler
+	buf   []byte         // Buffer for file io operations
+}
+
+type Got struct {
+	Index int64
+	Peer  *PeerHandler
 }
 
 // ============================================================================
@@ -62,10 +61,15 @@ func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 		return nil, e
 	}
 
+	torInfo := swarm.Tor.Info()
+
 	return &PeerHandler{
 		peerInfo: pInfo,
 		conn:     conn,
 		swarm:    swarm,
+		chErr:    swarm.ChErr,
+		procs:    sync.WaitGroup{},
+		buf:      make([]byte, torInfo.PieceLen(), torInfo.PieceLen()),
 	}, nil
 }
 
@@ -116,10 +120,16 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 	log.Printf("Sent %v bitfield\n", c.RemoteAddr())
 
 	newPeer := peer.MakePeer(string(peerHs.Id()), tcpAddr.IP, uint16(tcpAddr.Port))
+
+	torInfo := swarm.Tor.Info()
+
 	return &PeerHandler{
 		peerInfo: newPeer,
-		conn:     c,
 		swarm:    swarm,
+		conn:     c,
+		chErr:    swarm.ChErr,
+		procs:    sync.WaitGroup{},
+		buf:      make([]byte, torInfo.PieceLen(), torInfo.PieceLen()),
 	}, nil
 }
 
@@ -161,7 +171,7 @@ func (ph *PeerHandler) Loop() {
 			ph.procs.Wait()
 			// We will eventually wrap this in a struct so that we can
 			// tell the main loop which PeerHandler has errored
-			ph.swarm.ChErr <- e
+			ph.chErr <- e
 		}
 	}
 
