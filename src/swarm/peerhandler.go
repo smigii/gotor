@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"gotor/io"
 	"gotor/p2p"
 	"gotor/peer"
-	"gotor/utils/netread"
 )
 
 const (
@@ -197,7 +197,7 @@ func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	defer log.Printf("end recvLoop %v", ph.peerInfo.Addr())
 	log.Printf("start recvLoop %v", ph.peerInfo.Addr())
 
-	readLoop := netread.NewReadLoop(RecvBufSize, ph.conn, GetKeepAlive)
+	readLoop := io.NewReadLoop(RecvBufSize, ph.conn, GetKeepAlive)
 	go readLoop.Run()
 
 	var e error
@@ -205,10 +205,10 @@ func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	for !done {
 
 		select {
-		case buf := <-readLoop.ReadChBuf():
+		case buf := <-readLoop.ReadData():
 			e = ph.handleMessage(buf)
 			readLoop.Ready()
-		case e = <-readLoop.ReadChErr():
+		case e = <-readLoop.ReadError():
 			done = true
 		case <-chKill:
 			readLoop.Finish()

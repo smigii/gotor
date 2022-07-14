@@ -1,4 +1,4 @@
-package netread
+package io
 
 import (
 	"log"
@@ -9,7 +9,7 @@ import (
 // ReadLoop is used to read from a net.Conn in a select statement. Data is
 // read into a single buffer to avoid large amounts of allocations. Becuase of
 // this, reading must happen somewhat synchronously; first check for available
-// data using ReadChBuf, then call Ready once data has been processed and
+// data using ReadData, then call Ready once data has been processed and
 // is ready to be overwritten with new data.
 type ReadLoop struct {
 	buf     []byte        // Data read from conn
@@ -34,8 +34,8 @@ func NewReadLoop(bufSize int64, conn net.Conn, timeout time.Duration) *ReadLoop 
 	}
 }
 
-// ReadChBuf returns the read end of the buffer channel.
-func (rl *ReadLoop) ReadChBuf() <-chan []byte {
+// ReadData returns the read end of the buffer channel.
+func (rl *ReadLoop) ReadData() <-chan []byte {
 	return rl.chBuf
 }
 
@@ -45,8 +45,8 @@ func (rl *ReadLoop) Ready() {
 	rl.chReady <- struct{}{}
 }
 
-// ReadChErr returns the read end of the error channel.
-func (rl *ReadLoop) ReadChErr() <-chan error {
+// ReadError returns the read end of the error channel.
+func (rl *ReadLoop) ReadError() <-chan error {
 	return rl.chErr
 }
 
@@ -60,8 +60,8 @@ func (rl *ReadLoop) Finish() {
 
 // Run will enter an infinite loop reading from the connection. When data is
 // read, it will write a byte slice to the buffer channel, which is accessed
-// via ReadChBuf. If there are any errors, they are reported on the error
-// channel, accessed via ReadChErr. To finish the loop, call Finish.
+// via ReadData. If there are any errors, they are reported on the error
+// channel, accessed via ReadError. To finish the loop, call Finish.
 func (rl *ReadLoop) Run() {
 	log.Printf("started read loop for %v", rl.conn.RemoteAddr())
 	defer log.Printf("ended read loop for %v", rl.conn.RemoteAddr())
