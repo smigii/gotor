@@ -12,6 +12,8 @@ import (
 func main() {
 
 	opts := utils.GetOpts()
+	fmt.Println(opts.UpLimit())
+	fmt.Println(opts.DnLimit())
 
 	switch opts.Cmd() {
 	case utils.StartSwarm:

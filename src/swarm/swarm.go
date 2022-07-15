@@ -85,7 +85,10 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 
 	swarm.State = resp.State
 	swarm.Peers = resp.Peers
+
 	swarm.RLIO = io.NewRateLimitIO()
+	swarm.RLIO.SetWriteRate(opts.UpLimit())
+	swarm.RLIO.SetReadRate(opts.DnLimit())
 
 	return &swarm, nil
 }
