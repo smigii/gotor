@@ -37,11 +37,6 @@ type PeerHandler struct {
 	buf   []byte         // Buffer for file io operations
 }
 
-type Got struct {
-	Index int64
-	Peer  *PeerHandler
-}
-
 // ============================================================================
 // FUNK =======================================================================
 

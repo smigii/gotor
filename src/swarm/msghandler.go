@@ -29,7 +29,7 @@ func (ph *PeerHandler) handleMessage(buf []byte) error {
 }
 
 func (ph *PeerHandler) handleRequest(req *p2p.MsgRequest) error {
-	// TODO: This is so inefficient it hurts
+	// TODO: Cache pieces
 	s := ph.swarm
 	idx := int64(req.Index())
 	if s.Bf.Complete() || s.Bf.Get(idx) {

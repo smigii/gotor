@@ -8,7 +8,6 @@ import (
 
 	"gotor/bf"
 	"gotor/io"
-
 	"gotor/peer"
 	"gotor/torrent"
 	"gotor/torrent/fileio"
@@ -117,7 +116,7 @@ func (s *Swarm) Validate() error {
 
 func (s *Swarm) Start() {
 
-	go s.listen()
+	go s.runListener()
 	go s.RLIO.Run()
 
 	// Start peer Goroutines
@@ -133,7 +132,7 @@ func (s *Swarm) Start() {
 	}
 }
 
-func (s *Swarm) listen() {
+func (s *Swarm) runListener() {
 	opts := utils.GetOpts()
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", opts.Port()))
@@ -161,6 +160,10 @@ func (s *Swarm) listen() {
 			}
 		}(conn)
 	}
+}
+
+func (s *Swarm) runDownloader() {
+
 }
 
 func (s *Swarm) String() string {
