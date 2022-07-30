@@ -35,7 +35,7 @@ func (hs Handshake) Id() []byte {
 	return hs[48:68]
 }
 
-func Validate(hs Handshake, infohash string) bool {
+func ValidHandshake(hs Handshake, infohash string) bool {
 
 	if len(hs) != int(HandshakeLen) {
 		return false

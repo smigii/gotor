@@ -75,26 +75,30 @@ func (ppt *PeerPieceTracker) NextPiece(indices []bool) int64 {
 	return -1
 }
 
-// IncPiece increments the piece count for given index.
-func (ppt *PeerPieceTracker) IncPiece(index int64) {
+// IncPieces increments the piece counts for the given indices.
+func (ppt *PeerPieceTracker) IncPieces(indices ...int64) {
 	ppt.lock.Lock()
 	defer ppt.lock.Unlock()
 
-	node := ppt.nodes[index]
-	oldCount := node.Data.count
-	ppt.buckets[oldCount].Remove(node)
-	ppt.buckets[oldCount+1].AddNodeFront(node)
-	node.Data.count++
+	for _, index := range indices {
+		node := ppt.nodes[index]
+		oldCount := node.Data.count
+		ppt.buckets[oldCount].Remove(node)
+		ppt.buckets[oldCount+1].AddNodeFront(node)
+		node.Data.count++
+	}
 }
 
-// DecPiece decrements the piece count for given index.
-func (ppt *PeerPieceTracker) DecPiece(index int64) {
+// DecPieces decrements the piece counts for the given indices.
+func (ppt *PeerPieceTracker) DecPieces(indices ...int64) {
 	ppt.lock.Lock()
 	defer ppt.lock.Unlock()
 
-	node := ppt.nodes[index]
-	oldCount := node.Data.count
-	ppt.buckets[oldCount].Remove(node)
-	ppt.buckets[oldCount-1].AddNodeFront(node)
-	node.Data.count--
+	for _, index := range indices {
+		node := ppt.nodes[index]
+		oldCount := node.Data.count
+		ppt.buckets[oldCount].Remove(node)
+		ppt.buckets[oldCount-1].AddNodeFront(node)
+		node.Data.count--
+	}
 }

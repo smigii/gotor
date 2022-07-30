@@ -30,11 +30,11 @@ type PeerHandler struct {
 	peerState peer.State
 	swarm     *Swarm
 	conn      net.Conn
-	chErr     chan<- error // Report errors
-	//chReq      <-chan int64    // Pieces we should request from peer
-	//chGot      chan<- Got      // Pieces we have successfully written
-	procs sync.WaitGroup // How many loops are running for this handler
-	buf   []byte         // Buffer for file io operations
+	pieces    []bool         // Piece "bitfield"
+	procs     sync.WaitGroup // How many loops are running for this handler
+	buf       []byte         // Buffer for file io operations
+
+	chErr chan<- error // Report errors
 }
 
 // ============================================================================
@@ -44,7 +44,6 @@ type PeerHandler struct {
 // handshake.
 func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 	conn, e := net.Dial("tcp", pInfo.Addr())
-
 	if e != nil {
 		return nil, e
 	}
@@ -56,24 +55,15 @@ func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 		return nil, e
 	}
 
-	torInfo := swarm.Tor.Info()
-
-	return &PeerHandler{
-		peerInfo: pInfo,
-		conn:     conn,
-		swarm:    swarm,
-		chErr:    swarm.ChErr,
-		procs:    sync.WaitGroup{},
-		buf:      make([]byte, torInfo.PieceLen(), torInfo.PieceLen()),
-	}, nil
+	return NewPeerHandler(pInfo, swarm, conn), nil
 }
 
 // Incoming receives a new peer connection. It will first check for the correct
 // BitTorrent handshake, add to the peer list, then send a handshake and bitfield back.
-func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
+func Incoming(conn net.Conn, swarm *Swarm) (*PeerHandler, error) {
 
 	// Must be using TCP (for now atleast)
-	tcpAddr, ok := c.RemoteAddr().(*net.TCPAddr)
+	tcpAddr, ok := conn.RemoteAddr().(*net.TCPAddr)
 	if !ok {
 		return nil, errors.New("connection is not TCP")
 	}
@@ -81,51 +71,55 @@ func Incoming(c net.Conn, swarm *Swarm) (*PeerHandler, error) {
 	buf := make([]byte, HandshakeLen)
 
 	// Set timeout
-	e := c.SetReadDeadline(time.Now().Add(HandshakeTimeout))
+	e := conn.SetReadDeadline(time.Now().Add(HandshakeTimeout))
 	if e != nil {
 		return nil, e
 	}
 
 	// Read the handshake
-	_, e = c.Read(buf)
+	_, e = conn.Read(buf)
 	if e != nil {
 		return nil, e
 	}
 	peerHs := Handshake(buf)
-	if !Validate(peerHs, swarm.Tor.Infohash()) {
-		_ = c.Close() // TODO: Handle?
+	if !ValidHandshake(peerHs, swarm.Tor.Infohash()) {
+		_ = conn.Close() // TODO: Handle?
 		return nil, fmt.Errorf("bad peer handshake")
 	}
-	log.Printf("good handshake from %v", c.RemoteAddr())
+	log.Printf("good handshake from %v", conn.RemoteAddr())
 
 	// Send handshake
 	hs := MakeHandshake(swarm.Tor.Infohash(), swarm.Id)
-	_, e = c.Write(hs)
+	_, e = conn.Write(hs)
 	if e != nil {
 		return nil, e
 	}
-	log.Printf("Sent %v handshake\n", c.RemoteAddr())
+	log.Printf("Sent %v handshake\n", conn.RemoteAddr())
 
 	// Send bitfield
 	bfmsg := p2p.NewMsgBitfield(swarm.Bf)
-	_, e = c.Write(bfmsg.Encode())
+	_, e = conn.Write(bfmsg.Encode())
 	if e != nil {
 		return nil, e
 	}
-	log.Printf("Sent %v bitfield\n", c.RemoteAddr())
+	log.Printf("Sent %v bitfield\n", conn.RemoteAddr())
 
 	newPeer := peer.MakePeer(string(peerHs.Id()), tcpAddr.IP, uint16(tcpAddr.Port))
 
-	torInfo := swarm.Tor.Info()
+	return NewPeerHandler(newPeer, swarm, conn), nil
+}
 
+func NewPeerHandler(pInfo peer.Peer, swarm *Swarm, conn net.Conn) *PeerHandler {
+	torInfo := swarm.Tor.Info()
 	return &PeerHandler{
-		peerInfo: newPeer,
+		peerInfo: pInfo,
 		swarm:    swarm,
-		conn:     c,
+		conn:     conn,
 		chErr:    swarm.ChErr,
 		procs:    sync.WaitGroup{},
 		buf:      make([]byte, torInfo.PieceLen(), torInfo.PieceLen()),
-	}, nil
+		pieces:   make([]bool, torInfo.NumPieces(), torInfo.NumPieces()),
+	}
 }
 
 // ============================================================================
@@ -149,6 +143,8 @@ func (ph *PeerHandler) Loop() {
 	go ph.pingLoop(chErr, chDone)
 
 	go ph.recvLoop(chErr, chDone)
+
+	go ph.downloadLoop(chErr, chDone)
 
 	done := false
 	for {
@@ -215,6 +211,16 @@ func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 			done = true
 		}
 	}
+}
+
+// downloadLoop does stuff
+func (ph *PeerHandler) downloadLoop(chErr chan<- error, chDone <-chan bool) {
+	ph.procs.Add(1)
+	defer ph.procs.Done()
+
+	log.Printf("start downloadLoop %v", ph.peerInfo.Addr())
+	defer log.Printf("end downloadLoop %v", ph.peerInfo.Addr())
+
 }
 
 // pingLoop sends a keep alive message to the peer at a set interval.

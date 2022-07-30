@@ -41,13 +41,8 @@ func TestPeerPieceTracker_NextPiece(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ppt := NewPeerPieceTracker(tt.size)
 
-			for _, i := range tt.incs {
-				ppt.IncPiece(i)
-			}
-
-			for _, d := range tt.decs {
-				ppt.DecPiece(d)
-			}
+			ppt.IncPieces(tt.incs...)
+			ppt.DecPieces(tt.decs...)
 
 			// This will simulate our PeerHandler bitfield
 			boolSlice := MakeBoolSlice(tt.size, tt.indices...)

@@ -9,6 +9,7 @@ import (
 	"gotor/bf"
 	"gotor/io"
 	"gotor/peer"
+	"gotor/swarm/piecetracker"
 	"gotor/torrent"
 	"gotor/torrent/fileio"
 	"gotor/tracker"
@@ -26,6 +27,7 @@ type Swarm struct {
 	Fileio *fileio.FileIO
 	RLIO   *io.RateLimitIO
 	Bf     *bf.Bitfield
+	Ppt    *piecetracker.PeerPieceTracker
 	Id     string
 	Port   uint16
 
@@ -88,6 +90,8 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	swarm.RLIO = io.NewRateLimitIO()
 	swarm.RLIO.SetWriteRate(opts.UpLimit())
 	swarm.RLIO.SetReadRate(opts.DnLimit())
+
+	swarm.Ppt = piecetracker.NewPeerPieceTracker(torInfo.NumPieces())
 
 	return &swarm, nil
 }
@@ -160,10 +164,6 @@ func (s *Swarm) runListener() {
 			}
 		}(conn)
 	}
-}
-
-func (s *Swarm) runDownloader() {
-
 }
 
 func (s *Swarm) String() string {
