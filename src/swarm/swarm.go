@@ -9,7 +9,6 @@ import (
 	"gotor/bf"
 	"gotor/io"
 	"gotor/peer"
-	"gotor/swarm/piecetracker"
 	"gotor/torrent"
 	"gotor/torrent/fileio"
 	"gotor/tracker"
@@ -27,7 +26,7 @@ type Swarm struct {
 	Fileio *fileio.FileIO
 	RLIO   *io.RateLimitIO
 	Bf     *bf.Bitfield
-	Ppt    *piecetracker.PeerPieceTracker
+	Ppt    *PeerPieceTracker
 	Id     string
 	Port   uint16
 
@@ -91,7 +90,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	swarm.RLIO.SetWriteRate(opts.UpLimit())
 	swarm.RLIO.SetReadRate(opts.DnLimit())
 
-	swarm.Ppt = piecetracker.NewPeerPieceTracker(torInfo.NumPieces())
+	swarm.Ppt = NewPeerPieceTracker(torInfo.NumPieces())
 
 	return &swarm, nil
 }
@@ -126,7 +125,7 @@ func (s *Swarm) Start() {
 	// Start peer Goroutines
 	for _, p := range s.Peers {
 		go func(peer peer.Peer) {
-			ph, e := Bootstrap(peer, s)
+			ph, e := FromBootstrap(peer, s)
 			if e != nil {
 				log.Printf("failed to bootstrap %v : %v", peer.Addr(), e)
 			} else {
@@ -155,7 +154,7 @@ func (s *Swarm) runListener() {
 		log.Printf("new client @ %v", conn.RemoteAddr())
 
 		go func(c net.Conn) {
-			ph, e := Incoming(c, s)
+			ph, e := FromIncoming(c, s)
 			if e != nil {
 				log.Println(e)
 			} else {

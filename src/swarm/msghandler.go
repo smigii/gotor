@@ -53,7 +53,7 @@ func (ph *PeerHandler) handleBitfield(bfMsg *p2p.MsgBitfield) error {
 	}
 
 	// Increment all the pieces we have
-	swarm.Ppt.IncPieces(havePieces...)
+	swarm.Ppt.Register(ph, havePieces...)
 
 	return nil
 }

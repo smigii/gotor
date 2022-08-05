@@ -40,9 +40,9 @@ type PeerHandler struct {
 // ============================================================================
 // FUNK =======================================================================
 
-// Bootstrap creates a TCP connection with the peer, then sends the BitTorrent
+// FromBootstrap creates a TCP connection with the peer, then sends the BitTorrent
 // handshake.
-func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
+func FromBootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 	conn, e := net.Dial("tcp", pInfo.Addr())
 	if e != nil {
 		return nil, e
@@ -58,9 +58,9 @@ func Bootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
 	return NewPeerHandler(pInfo, swarm, conn), nil
 }
 
-// Incoming receives a new peer connection. It will first check for the correct
+// FromIncoming receives a new peer connection. It will first check for the correct
 // BitTorrent handshake, add to the peer list, then send a handshake and bitfield back.
-func Incoming(conn net.Conn, swarm *Swarm) (*PeerHandler, error) {
+func FromIncoming(conn net.Conn, swarm *Swarm) (*PeerHandler, error) {
 
 	// Must be using TCP (for now atleast)
 	tcpAddr, ok := conn.RemoteAddr().(*net.TCPAddr)

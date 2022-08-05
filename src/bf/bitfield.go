@@ -1,6 +1,8 @@
 package bf
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Bitfield is fairly self-explanatory, aside from the data5 field. Rather than
 // only holding the data of the bitfield, the first 5 bytes represent the length
@@ -155,4 +157,12 @@ func (bf *Bitfield) Nbytes() int64 {
 
 func (bf *Bitfield) Nset() int64 {
 	return bf.nset
+}
+
+func FromBoolSlice(bools []bool) *Bitfield {
+	bf := NewBitfield(int64(len(bools)))
+	for i, b := range bools {
+		bf.Set(int64(i), b)
+	}
+	return bf
 }

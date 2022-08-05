@@ -1,4 +1,4 @@
-package linklist
+package ll
 
 import (
 	"testing"
