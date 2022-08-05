@@ -62,27 +62,45 @@ func NewPeerPieceTracker(size int64) *PeerPieceTracker {
 	return &ppt
 }
 
+// RegisterBF registers all the set bits of a bitfield to the fiven peer.
+func (ppt *PeerPieceTracker) RegisterBF(whom *PeerHandler, bf *bf.Bitfield) {
+	ppt.mutex.Lock()
+	defer ppt.mutex.Unlock()
+
+	for index := int64(0); index < bf.Nbits(); index++ {
+		if bf.Get(index) {
+			ppt.register(whom, index)
+		}
+	}
+}
+
 // Register registers the given peer as having the given piece indices.
 func (ppt *PeerPieceTracker) Register(whom *PeerHandler, indices ...int64) {
 	ppt.mutex.Lock()
 	defer ppt.mutex.Unlock()
 
 	for _, index := range indices {
-		node := ppt.nodes[index]
+		ppt.register(whom, index)
+	}
+}
 
-		// Update piece's "peers" set
-		if _, has := node.Data.peers[whom]; !has {
-			// Move to next bucket, unless this is the largest bucket
-			oldCount := len(node.Data.peers)
-			if oldCount < numBuckets {
-				ppt.buckets[oldCount].Remove(node)
-				ppt.buckets[oldCount+1].AddNodeFront(node)
-			}
+// register will register the given peer as having the given piece indices.
+// This should only be called by Register or RegisterBF, which have acquired
+// the lock.
+func (ppt *PeerPieceTracker) register(whom *PeerHandler, index int64) {
+	node := ppt.nodes[index]
 
-			// Add to set
-			node.Data.peers[whom] = struct{}{}
+	// Update piece's "peers" set
+	if _, has := node.Data.peers[whom]; !has {
+		// Move to next bucket, unless this is the largest bucket
+		oldCount := len(node.Data.peers)
+		if oldCount < numBuckets {
+			ppt.buckets[oldCount].Remove(node)
+			ppt.buckets[oldCount+1].AddNodeFront(node)
 		}
-		//node.Data.count++
+
+		// Add to set
+		node.Data.peers[whom] = struct{}{}
 	}
 }
 

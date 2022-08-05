@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"gotor/p2p"
@@ -33,27 +34,20 @@ func (ph *PeerHandler) handleMessage(buf []byte) error {
 }
 
 func (ph *PeerHandler) handleBitfield(bfMsg *p2p.MsgBitfield) error {
+	// TODO: Check that this is the first message received
+	// If not, error and kill connection.
 	swarm := ph.swarm
-	torInfo := swarm.Tor.Info()
 
 	bf := bfMsg.Bitfield()
 	if bf.Nbytes() != swarm.Bf.Nbytes() {
 		return errors.New("invalid bitfield")
 	}
 
-	// Set peer bitfield. Since we aren't encoding this value ever, we can
-	// just store it as a simple slice of bools
-	havePieces := make([]int64, 0, torInfo.NumPieces())
-	for i := int64(0); i < torInfo.NumPieces(); i++ {
-		val := bf.Get(i)
-		if val {
-			ph.pieces[i] = true
-			havePieces = append(havePieces, i)
-		}
-	}
+	// Replace the bitfield
+	ph.bf = bf
 
-	// Increment all the pieces we have
-	swarm.Ppt.Register(ph, havePieces...)
+	// Register
+	swarm.PPT.RegisterBF(ph, bf)
 
 	return nil
 }
@@ -62,6 +56,7 @@ func (ph *PeerHandler) handleRequest(reqMsg *p2p.MsgRequest) error {
 	// TODO: Cache pieces
 	s := ph.swarm
 	idx := int64(reqMsg.Index())
+	fmt.Printf("REQUEST SIZE: %v\n", reqMsg.ReqLen())
 	if s.Bf.Complete() || s.Bf.Get(idx) {
 		_, e := s.Fileio.ReadPiece(idx, ph.buf)
 		if e != nil {

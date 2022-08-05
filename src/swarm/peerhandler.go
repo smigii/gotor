@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"gotor/bf"
 	"gotor/io"
 	"gotor/p2p"
 	"gotor/peer"
@@ -30,7 +31,7 @@ type PeerHandler struct {
 	peerState peer.State
 	swarm     *Swarm
 	conn      net.Conn
-	pieces    []bool         // Piece "bitfield"
+	bf        *bf.Bitfield
 	procs     sync.WaitGroup // How many loops are running for this handler
 	buf       []byte         // Buffer for file io operations
 
@@ -118,8 +119,17 @@ func NewPeerHandler(pInfo peer.Peer, swarm *Swarm, conn net.Conn) *PeerHandler {
 		chErr:    swarm.ChErr,
 		procs:    sync.WaitGroup{},
 		buf:      make([]byte, torInfo.PieceLen(), torInfo.PieceLen()),
-		pieces:   make([]bool, torInfo.NumPieces(), torInfo.NumPieces()),
+		bf:       bf.NewBitfield(torInfo.NumPieces()),
 	}
+}
+
+// ============================================================================
+// ============================================================================
+
+func (ph *PeerHandler) Choke() error {
+	msg := p2p.NewMsgUnchoke()
+	_, e := ph.conn.Write(msg.Encode())
+	return e
 }
 
 // ============================================================================

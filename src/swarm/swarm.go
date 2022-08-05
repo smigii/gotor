@@ -26,7 +26,7 @@ type Swarm struct {
 	Fileio *fileio.FileIO
 	RLIO   *io.RateLimitIO
 	Bf     *bf.Bitfield
-	Ppt    *PeerPieceTracker
+	PPT    *PeerPieceTracker
 	Id     string
 	Port   uint16
 
@@ -90,7 +90,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	swarm.RLIO.SetWriteRate(opts.UpLimit())
 	swarm.RLIO.SetReadRate(opts.DnLimit())
 
-	swarm.Ppt = NewPeerPieceTracker(torInfo.NumPieces())
+	swarm.PPT = NewPeerPieceTracker(torInfo.NumPieces())
 
 	return &swarm, nil
 }
