@@ -67,11 +67,7 @@ func TestPeerPieceTracker_NextPieceByPeer(t *testing.T) {
 			ppt := NewPeerPieceTracker(tt.size)
 
 			// Make bitfield
-			bools := make([]bool, tt.size, tt.size)
-			for _, i := range tt.need {
-				bools[i] = true
-			}
-			bitfield := bf.FromBoolSlice(bools)
+			bitfield := bfFromHave(tt.size, tt.need)
 
 			// Simulate all the adding and deleting
 			for _, action := range tt.actions {

@@ -6,39 +6,45 @@ import (
 	"strings"
 )
 
-type Peer struct {
+type Info struct {
 	id   string
 	ip   net.IP
 	port uint16
 	addr string
+	str  string
 }
 
-func MakePeer(id string, ip net.IP, port uint16) Peer {
+func MakePeer(id string, ip net.IP, port uint16) Info {
 	strb := strings.Builder{}
 	strb.WriteString(ip.String())
 	strb.WriteByte(':')
 	strb.WriteString(fmt.Sprintf("%v", port))
 
-	return Peer{
+	return Info{
 		id:   id,
 		ip:   ip,
 		port: port,
 		addr: strb.String(),
+		str:  fmt.Sprintf("%v @ %v:%v", id, ip, port),
 	}
 }
 
-func (p Peer) Id() string {
+func (p Info) Id() string {
 	return p.id
 }
 
-func (p Peer) Ip() net.IP {
+func (p Info) Ip() net.IP {
 	return p.ip
 }
 
-func (p Peer) Port() uint16 {
+func (p Info) Port() uint16 {
 	return p.port
 }
 
-func (p *Peer) Addr() string {
+func (p *Info) Addr() string {
 	return p.addr
+}
+
+func (p *Info) String() string {
+	return p.str
 }

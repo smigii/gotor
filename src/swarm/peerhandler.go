@@ -27,7 +27,7 @@ const (
 // STRUCTS ====================================================================
 
 type PeerHandler struct {
-	peerInfo  peer.Peer
+	peerInfo  peer.Info
 	peerState peer.State
 	swarm     *Swarm
 	conn      net.Conn
@@ -43,7 +43,7 @@ type PeerHandler struct {
 
 // FromBootstrap creates a TCP connection with the peer, then sends the BitTorrent
 // handshake.
-func FromBootstrap(pInfo peer.Peer, swarm *Swarm) (*PeerHandler, error) {
+func FromBootstrap(pInfo peer.Info, swarm *Swarm) (*PeerHandler, error) {
 	conn, e := net.Dial("tcp", pInfo.Addr())
 	if e != nil {
 		return nil, e
@@ -110,7 +110,7 @@ func FromIncoming(conn net.Conn, swarm *Swarm) (*PeerHandler, error) {
 	return NewPeerHandler(newPeer, swarm, conn), nil
 }
 
-func NewPeerHandler(pInfo peer.Peer, swarm *Swarm, conn net.Conn) *PeerHandler {
+func NewPeerHandler(pInfo peer.Info, swarm *Swarm, conn net.Conn) *PeerHandler {
 	torInfo := swarm.Tor.Info()
 	return &PeerHandler{
 		peerInfo: pInfo,
@@ -167,7 +167,7 @@ func (ph *PeerHandler) Loop() {
 		// We will fine-tune this later
 		case e = <-chErr:
 			done = true
-			log.Printf("error peer %v (killing): %v", ph.peerInfo.Addr(), e)
+			log.Printf("error peer [%v] (killing): %v", ph.peerInfo.String(), e)
 			chDone <- true
 			ph.procs.Wait()
 			// We will eventually wrap this in a struct so that we can
@@ -195,8 +195,8 @@ func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	ph.procs.Add(1)
 	defer ph.procs.Done()
 
-	defer log.Printf("end recvLoop %v", ph.peerInfo.Addr())
-	log.Printf("start recvLoop %v", ph.peerInfo.Addr())
+	defer log.Printf("end recvLoop [%v]", ph.peerInfo.String())
+	log.Printf("start recvLoop [%v]", ph.peerInfo.String())
 
 	readLoop := io.NewReadLoop(RecvBufSize, ph.conn, GetKeepAlive)
 	go readLoop.Run()
@@ -228,17 +228,18 @@ func (ph *PeerHandler) downloadLoop(chErr chan<- error, chDone <-chan bool) {
 	ph.procs.Add(1)
 	defer ph.procs.Done()
 
-	log.Printf("start downloadLoop %v", ph.peerInfo.Addr())
-	defer log.Printf("end downloadLoop %v", ph.peerInfo.Addr())
+	log.Printf("start downloadLoop [%v]", ph.peerInfo.String())
+	defer log.Printf("end downloadLoop [%v]", ph.peerInfo.String())
 
 }
 
-// pingLoop sends a keep alive message to the peer at a set interval.
+// pingLoop sends a keep alive message to the peer at a set interval
+// defined by SendKeepAlive.
 func (ph *PeerHandler) pingLoop(chErr chan<- error, chDone <-chan bool) {
 
 	ph.procs.Add(1)
 	defer ph.procs.Done()
-	defer log.Printf("end pingLoop %v", ph.peerInfo.Addr())
+	defer log.Printf("end pingLoop [%v]", ph.peerInfo.String())
 
 	log.Printf("start pingLoop %v", ph.peerInfo.Addr())
 

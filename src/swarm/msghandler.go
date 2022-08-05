@@ -43,6 +43,9 @@ func (ph *PeerHandler) handleBitfield(bfMsg *p2p.MsgBitfield) error {
 		return errors.New("invalid bitfield")
 	}
 
+	// Set to correct number of bits
+	bf.SetNbits(swarm.Tor.Info().NumPieces())
+
 	// Replace the bitfield
 	ph.bf = bf
 

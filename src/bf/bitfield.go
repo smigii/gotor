@@ -159,10 +159,15 @@ func (bf *Bitfield) Nset() int64 {
 	return bf.nset
 }
 
-func FromBoolSlice(bools []bool) *Bitfield {
-	bf := NewBitfield(int64(len(bools)))
-	for i, b := range bools {
-		bf.Set(int64(i), b)
+// 00000000 00000000 00000xxx
+
+func (bf *Bitfield) SetNbits(nbits int64) {
+	if nbits < (bf.nbytes-1)*8 || nbits > (bf.nbytes)*8 {
+		panic("cannot set nbits such that nbytes would change")
 	}
-	return bf
+	bf.nbits = nbits
+
+	// TODO: This is lazy
+	// Just recalculate the last byte
+	bf.calcNset()
 }

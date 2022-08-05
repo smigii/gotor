@@ -124,7 +124,7 @@ func (s *Swarm) Start() {
 
 	// Start peer Goroutines
 	for _, p := range s.Peers {
-		go func(peer peer.Peer) {
+		go func(peer peer.Info) {
 			ph, e := FromBootstrap(peer, s)
 			if e != nil {
 				log.Printf("failed to bootstrap %v : %v", peer.Addr(), e)
