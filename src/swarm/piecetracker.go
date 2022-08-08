@@ -5,6 +5,7 @@ import (
 
 	"gotor/bf"
 	"gotor/utils/ll"
+	"gotor/utils/set"
 )
 
 // ============================================================================
@@ -36,8 +37,8 @@ type PeerPieceTracker struct {
 }
 
 type piece struct {
-	index int64
-	peers map[*PeerHandler]struct{} // Set of peers who have this piece
+	index   int64
+	peerSet set.Set[*PeerHandler]
 }
 
 // ============================================================================
@@ -52,8 +53,8 @@ func NewPeerPieceTracker(size int64) *PeerPieceTracker {
 	// Initialize nodes
 	for i := int64(0); i < size; i++ {
 		p := piece{
-			index: i,
-			peers: make(map[*PeerHandler]struct{}),
+			index:   i,
+			peerSet: set.MakeSet[*PeerHandler](),
 		}
 		node := ppt.buckets[0].AddDataFront(p)
 		ppt.nodes[i] = node
@@ -91,16 +92,16 @@ func (ppt *PeerPieceTracker) register(whom *PeerHandler, index int64) {
 	node := ppt.nodes[index]
 
 	// Update piece's "peers" set
-	if _, has := node.Data.peers[whom]; !has {
+	if !node.Data.peerSet.Has(whom) {
 		// Move to next bucket, unless this is the largest bucket
-		oldCount := len(node.Data.peers)
+		oldCount := node.Data.peerSet.Size()
 		if oldCount < numBuckets {
 			ppt.buckets[oldCount].Remove(node)
 			ppt.buckets[oldCount+1].AddNodeFront(node)
 		}
 
 		// Add to set
-		node.Data.peers[whom] = struct{}{}
+		node.Data.peerSet.Add(whom)
 	}
 }
 
@@ -111,18 +112,18 @@ func (ppt *PeerPieceTracker) Unregister(whom *PeerHandler) {
 
 	for _, node := range ppt.nodes {
 
-		if _, has := node.Data.peers[whom]; has {
+		if node.Data.peerSet.Has(whom) {
 			// Move to previous bucket, unless decrementing value by 1
 			// leaves it in the largest bucket. I.e, numBuckets = 50
 			// and oldCount = 52, then the node should remain in bucket 50.
-			oldCount := len(node.Data.peers)
+			oldCount := node.Data.peerSet.Size()
 			if oldCount <= numBuckets {
 				ppt.buckets[oldCount].Remove(node)
 				ppt.buckets[oldCount-1].AddNodeFront(node)
 			}
 
 			// Remove from set
-			delete(node.Data.peers, whom)
+			node.Data.peerSet.Remove(whom)
 		}
 	}
 }
@@ -142,7 +143,7 @@ func (ppt *PeerPieceTracker) NextPieceByPeer(whom *PeerHandler, need *bf.Bitfiel
 			// If the piece is needed
 			if need.Get(cur.Data.index) {
 				// If the peer has the piece
-				if _, has := cur.Data.peers[whom]; has {
+				if cur.Data.peerSet.Has(whom) {
 					return cur.Data.index
 				}
 			}

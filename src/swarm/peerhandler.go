@@ -264,3 +264,7 @@ func (ph *PeerHandler) pingLoop(chErr chan<- error, chDone <-chan bool) {
 		}
 	}
 }
+
+func (ph *PeerHandler) Key() string {
+	return ph.peerInfo.String()
+}
