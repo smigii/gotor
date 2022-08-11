@@ -1,11 +1,10 @@
 package swarm
 
 import (
+	"gotor/utils/ds"
 	"sync"
 
 	"gotor/bf"
-	"gotor/utils/ll"
-	"gotor/utils/set"
 )
 
 // ============================================================================
@@ -26,35 +25,44 @@ const (
 // PeerPieceTracker tracks which peers have which pieces, and provides a fast
 // lookup for the rarest pieces by peer.
 type PeerPieceTracker struct {
-	nodes []*ll.Node[piece] // Orders pieces by index
+	nodes []*ds.Node[piece] // Orders pieces by index
 
 	// Orders pieces by count. Each index i corresponds to the list of pieces
 	// that have count i. At the start of a swarm, all pieces should be in
 	// the list at index 0, since all pieces start with 0 count.
-	buckets []ll.LinkedList[piece]
+	buckets []ds.LinkedList[piece]
+
+	// Maps which peers are downloading which pieces
+	requests map[*PeerHandler][]*piece
+
+	bf *bf.Bitfield // Our bitfield
 
 	mutex sync.Mutex
 }
 
 type piece struct {
-	index   int64
-	peerSet set.Set[*PeerHandler]
+	index   uint32
+	active  bool // Is this index being requested from a peer?
+	peerSet ds.Set[*PeerHandler]
 }
 
 // ============================================================================
 // ============================================================================
 
-func NewPeerPieceTracker(size int64) *PeerPieceTracker {
+func NewPeerPieceTracker(size uint32, bf *bf.Bitfield) *PeerPieceTracker {
 	ppt := PeerPieceTracker{}
 
-	ppt.nodes = make([]*ll.Node[piece], size, size)
-	ppt.buckets = make([]ll.LinkedList[piece], numBuckets, numBuckets)
+	ppt.nodes = make([]*ds.Node[piece], size, size)
+	ppt.buckets = make([]ds.LinkedList[piece], numBuckets, numBuckets)
+	ppt.requests = make(map[*PeerHandler][]*piece)
+	ppt.bf = bf
 
 	// Initialize nodes
-	for i := int64(0); i < size; i++ {
+	for i := uint32(0); i < size; i++ {
 		p := piece{
 			index:   i,
-			peerSet: set.MakeSet[*PeerHandler](),
+			active:  false,
+			peerSet: ds.MakeSet[*PeerHandler](),
 		}
 		node := ppt.buckets[0].AddDataFront(p)
 		ppt.nodes[i] = node
@@ -70,13 +78,13 @@ func (ppt *PeerPieceTracker) RegisterBF(whom *PeerHandler, bf *bf.Bitfield) {
 
 	for index := int64(0); index < bf.Nbits(); index++ {
 		if bf.Get(index) {
-			ppt.register(whom, index)
+			ppt.register(whom, uint32(index))
 		}
 	}
 }
 
 // Register registers the given peer as having the given piece indices.
-func (ppt *PeerPieceTracker) Register(whom *PeerHandler, indices ...int64) {
+func (ppt *PeerPieceTracker) Register(whom *PeerHandler, indices ...uint32) {
 	ppt.mutex.Lock()
 	defer ppt.mutex.Unlock()
 
@@ -88,7 +96,7 @@ func (ppt *PeerPieceTracker) Register(whom *PeerHandler, indices ...int64) {
 // register will register the given peer as having the given piece indices.
 // This should only be called by Register or RegisterBF, which have acquired
 // the lock.
-func (ppt *PeerPieceTracker) register(whom *PeerHandler, index int64) {
+func (ppt *PeerPieceTracker) register(whom *PeerHandler, index uint32) {
 	node := ppt.nodes[index]
 
 	// Update piece's "peers" set
@@ -110,6 +118,12 @@ func (ppt *PeerPieceTracker) Unregister(whom *PeerHandler) {
 	ppt.mutex.Lock()
 	defer ppt.mutex.Unlock()
 
+	// Set the peers active requests to unactive
+	for _, p := range ppt.requests[whom] {
+		p.active = false
+	}
+
+	// Remove peer from all index peer sets
 	for _, node := range ppt.nodes {
 
 		if node.Data.peerSet.Has(whom) {
@@ -128,11 +142,8 @@ func (ppt *PeerPieceTracker) Unregister(whom *PeerHandler) {
 	}
 }
 
-// NextPieceByPeer returns the rarest piece that has been registered to the
-// given peer, and that isn't set in the given bitfield. Pieces with count 0
-// are skipped. If the peer hasn't registered any pieces that are needed,
-// returns -1.
-func (ppt *PeerPieceTracker) NextPieceByPeer(whom *PeerHandler, need *bf.Bitfield) int64 {
+// NextPiece does stuff
+func (ppt *PeerPieceTracker) NextPiece(whom *PeerHandler) (uint32, bool) {
 	ppt.mutex.Lock()
 	defer ppt.mutex.Unlock()
 
@@ -140,16 +151,20 @@ func (ppt *PeerPieceTracker) NextPieceByPeer(whom *PeerHandler, need *bf.Bitfiel
 
 		cur := ppt.buckets[i].Head()
 		for cur != nil {
+			curPiece := cur.Data
 			// If the piece is needed
-			if need.Get(cur.Data.index) {
-				// If the peer has the piece
-				if cur.Data.peerSet.Has(whom) {
-					return cur.Data.index
+			if ppt.bf.Get(int64(curPiece.index)) {
+				// If the piece isn't taken by another peer, and
+				// the peer has the piece
+				if !curPiece.active && curPiece.peerSet.Has(whom) {
+					curPiece.active = true
+					ppt.requests[whom] = append(ppt.requests[whom], &curPiece)
+					return curPiece.index, true
 				}
 			}
 			cur = cur.Next()
 		}
 	}
 
-	return -1
+	return 0, false
 }

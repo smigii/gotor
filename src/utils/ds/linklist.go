@@ -1,4 +1,4 @@
-package ll
+package ds
 
 type LinkedList[T any] struct {
 	head *Node[T]

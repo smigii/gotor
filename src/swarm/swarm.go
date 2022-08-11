@@ -90,7 +90,7 @@ func NewSwarm(opts *utils.Opts) (*Swarm, error) {
 	swarm.RLIO.SetWriteRate(opts.UpLimit())
 	swarm.RLIO.SetReadRate(opts.DnLimit())
 
-	swarm.PPT = NewPeerPieceTracker(torInfo.NumPieces())
+	swarm.PPT = NewPeerPieceTracker(uint32(torInfo.NumPieces()), swarm.Bf)
 
 	return &swarm, nil
 }

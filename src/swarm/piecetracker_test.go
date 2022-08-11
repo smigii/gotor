@@ -9,7 +9,7 @@ import (
 )
 
 // Make an empty PeerHandler with random IP and port, and given ID
-func mkPHMock(id string) *PeerHandler {
+func PHDummy(id string) *PeerHandler {
 	return &PeerHandler{
 		peerInfo: peer.MakePeer(id, net.IP{}, 60666),
 	}
@@ -24,64 +24,65 @@ func bfFromHave(size int64, gots []int64) *bf.Bitfield {
 	return pbf
 }
 
-func TestPeerPieceTracker_NextPieceByPeer(t *testing.T) {
+func TestPeerPieceTracker_NextPiece(t *testing.T) {
 
 	// peerAction is used to simulate a peer registering indices
 	type peerAction struct {
 		ph     *PeerHandler
-		bf     []int64 // Which indices are set in the bitfield (if any)
-		gets   []int64 // Which indices are set from "have messages"
-		want   int64   // Desired result after all peerActions are processed
-		leaves bool    // Should we de-register the peer after, Next() will not be tested on this peer
+		bf     []int64  // Which indices are set in the bitfield (if any)
+		gets   []uint32 // Which indices are set from "have messages"
+		want   uint32   // Desired result after all peerActions are processed
+		succ   bool     // Should we recieve true or false
+		leaves bool     // Should we de-register the peer after, Next() will not be tested on this peer
 	}
 
 	tests := []struct {
 		name    string
-		size    int64
+		size    uint32
 		need    []int64 // What piece indices do we need
 		actions []peerAction
 	}{
 		// Simple case
-		{"bf_only", 10, []int64{0}, []peerAction{
-			{mkPHMock("1"), []int64{0}, []int64{}, 0, false},
+		{"bf_only", 3, []int64{0}, []peerAction{
+			{PHDummy("1"), []int64{0}, []uint32{}, 0, true, false},
 		}},
 
-		{"have_only", 10, []int64{0}, []peerAction{
-			{mkPHMock("1"), []int64{}, []int64{0}, 0, false},
+		{"have_only", 3, []int64{0}, []peerAction{
+			{PHDummy("1"), []int64{}, []uint32{0}, 0, true, false},
 		}},
 
-		// Multiple peers
-		{"multi_peer", 10, []int64{0, 1, 2}, []peerAction{
-			{mkPHMock("1"), []int64{0, 1}, []int64{2}, 2, false},
-			{mkPHMock("2"), []int64{0}, []int64{}, 0, false},
-			{mkPHMock("3"), []int64{}, []int64{1}, 1, false},
+		// Multiple peers, rarest = 0 -> 1 -> 2
+		{"multi_peer", 3, []int64{0, 1, 2}, []peerAction{
+			{PHDummy("1"), []int64{0, 1, 2}, []uint32{}, 2, true, false},
+			{PHDummy("2"), []int64{0, 1}, []uint32{}, 1, true, false},
+			{PHDummy("3"), []int64{0}, []uint32{}, 0, true, false},
 		}},
 
 		// Test leaving
-		{"leaving_peers", 10, []int64{0, 1, 2}, []peerAction{
-			{mkPHMock("1"), []int64{0, 2}, []int64{}, 2, false},
-			{mkPHMock("2"), []int64{0}, []int64{}, 0, false},
-			{mkPHMock("3"), []int64{2}, []int64{}, -1, true}, // want ignored
-			{mkPHMock("4"), []int64{2}, []int64{}, -1, true}, // want ignored
+		{"leaving_peers", 2, []int64{0, 1}, []peerAction{
+			{PHDummy("1"), []int64{0, 1}, []uint32{}, 1, true, false},
+			{PHDummy("2"), []int64{0}, []uint32{}, 0, true, false},
+			{PHDummy("3"), []int64{1}, []uint32{}, 00, false, true}, // want ignored
+			{PHDummy("4"), []int64{1}, []uint32{}, 00, false, true}, // want ignored
 		}},
 
 		// A peer with no needed pieces
 		{"no_good_pieces", 10, []int64{2}, []peerAction{
-			{mkPHMock("1"), []int64{0, 1}, []int64{}, -1, false},
-			{mkPHMock("2"), []int64{1, 2}, []int64{}, 2, false},
+			{PHDummy("1"), []int64{0, 1}, []uint32{}, 00, false, false},
+			{PHDummy("2"), []int64{1, 2}, []uint32{}, 2, true, false},
 		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ppt := NewPeerPieceTracker(tt.size)
-
 			// Make bitfield
-			bitfield := bfFromHave(tt.size, tt.need)
+			bitfield := bfFromHave(int64(tt.size), tt.need)
+
+			ppt := NewPeerPieceTracker(tt.size, bitfield)
 
 			// Simulate all the adding and deleting
 			for _, action := range tt.actions {
 				// Register BITFIELD message
-				peerBf := bfFromHave(tt.size, action.bf)
+				peerBf := bfFromHave(int64(tt.size), action.bf)
 				ppt.RegisterBF(action.ph, peerBf)
 
 				// Register HAVE messages
@@ -99,7 +100,10 @@ func TestPeerPieceTracker_NextPieceByPeer(t *testing.T) {
 					continue
 				}
 
-				next := ppt.NextPieceByPeer(action.ph, bitfield)
+				next, ok := ppt.NextPiece(action.ph)
+				if action.succ && !ok {
+					t.Errorf("next piece for [%v], no next piece found", action.ph.Key())
+				}
 				if next != action.want {
 					t.Errorf("next piece for [%v], got %v, want %v", action.ph.Key(), next, action.want)
 				}

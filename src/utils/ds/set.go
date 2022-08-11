@@ -1,8 +1,4 @@
-package set
-
-type Key interface {
-	Key() string
-}
+package ds
 
 type Set[T Key] struct {
 	set map[string]T
@@ -14,23 +10,23 @@ func MakeSet[T Key]() Set[T] {
 	}
 }
 
-func (s *Set[T]) Add(hashable T) bool {
-	if !s.Has(hashable) {
-		s.set[hashable.Key()] = hashable
+func (s *Set[T]) Add(keyable T) bool {
+	if !s.Has(keyable) {
+		s.set[keyable.Key()] = keyable
 		return true
 	} else {
 		return false
 	}
 }
 
-func (s *Set[T]) Has(hashable T) bool {
-	_, has := s.set[hashable.Key()]
+func (s *Set[T]) Has(keyable T) bool {
+	_, has := s.set[keyable.Key()]
 	return has
 }
 
-func (s *Set[T]) Remove(hashable T) bool {
-	if s.Has(hashable) {
-		delete(s.set, hashable.Key())
+func (s *Set[T]) Remove(keyable T) bool {
+	if s.Has(keyable) {
+		delete(s.set, keyable.Key())
 		return true
 	} else {
 		return false
