@@ -154,7 +154,7 @@ func (ph *PeerHandler) Loop() {
 
 	go ph.recvLoop(chErr, chDone)
 
-	go ph.downloadLoop(chErr, chDone)
+	go ph.requestLoop(chErr, chDone)
 
 	done := false
 	for {
@@ -179,8 +179,8 @@ func (ph *PeerHandler) Loop() {
 	log.Printf("peer %v done", ph.peerInfo.Addr())
 }
 
-// recvLoop handles reading in data from the peer and handling replies.
-// To terminate the loop, call cancelRecvLoop.
+// recvLoop handles reading in data from the peer and sending
+// replies if needed.
 func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	// TODO: Should probably handle split messages
 	// What if we need to recv more than we can handle?
@@ -223,13 +223,13 @@ func (ph *PeerHandler) recvLoop(chErr chan<- error, chKill <-chan bool) {
 	}
 }
 
-// downloadLoop does stuff
-func (ph *PeerHandler) downloadLoop(chErr chan<- error, chDone <-chan bool) {
+// requestLoop sends out piece requests to the peer.
+func (ph *PeerHandler) requestLoop(chErr chan<- error, chDone <-chan bool) {
 	ph.procs.Add(1)
 	defer ph.procs.Done()
 
-	log.Printf("start downloadLoop [%v]", ph.peerInfo.String())
-	defer log.Printf("end downloadLoop [%v]", ph.peerInfo.String())
+	log.Printf("start requestLoop [%v]", ph.peerInfo.String())
+	defer log.Printf("end requestLoop [%v]", ph.peerInfo.String())
 
 }
 

@@ -142,7 +142,10 @@ func (ppt *PeerPieceTracker) Unregister(whom *PeerHandler) {
 	}
 }
 
-// NextPiece does stuff
+// NextPiece gets the rarest piece index that is available to download
+// from given PeerHandler, and that is not being downloaded by any other
+// peer. The returned index will be marked as active, and no other peer
+// may acquire it. If no piece index is available, returns (0, false)
 func (ppt *PeerPieceTracker) NextPiece(whom *PeerHandler) (uint32, bool) {
 	ppt.mutex.Lock()
 	defer ppt.mutex.Unlock()
