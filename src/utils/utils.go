@@ -121,3 +121,10 @@ func HashSlices(pieces [][]byte) string {
 	}
 	return hashBuilder.String()
 }
+
+// RemoveSwap removes an element from a slice by swapping the element
+// with the last element, then returning the slice with length reduced by 1.
+func RemoveSwap[T any](slice []T, index int64) []T {
+	slice[index] = slice[len(slice)-1]
+	return slice[:len(slice)-1]
+}
