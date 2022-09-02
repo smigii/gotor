@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -21,6 +22,9 @@ const (
 	GetKeepAlive     = 120 * time.Second
 	SendKeepAlive    = 60 * time.Second
 	HandshakeTimeout = 1 * time.Second
+
+	// requestLength is the same piece request length as qBittorrent
+	requestLength = 16384
 )
 
 // ============================================================================
@@ -231,6 +235,50 @@ func (ph *PeerHandler) requestLoop(chErr chan<- error, chDone <-chan bool) {
 	log.Printf("start requestLoop [%v]", ph.peerInfo.String())
 	defer log.Printf("end requestLoop [%v]", ph.peerInfo.String())
 
+	reqs := make([]uint32, 0, 5)
+
+	// TODO: Yikes
+	for !ph.swarm.Bf.Complete() {
+
+		// Fill up requests
+		for i := len(reqs); i < 5; i++ {
+			next, ok := ph.swarm.PPT.NextPiece(ph)
+			// TODO: Handle this
+			if !ok {
+				break
+			}
+			reqs = append(reqs, next)
+
+			// Make the request. qBittorrent uses 16KiB requests
+			msgs := ph.createReqMessages(next)
+			for _, msg := range msgs {
+				// TODO: Handle
+				_ = ph.swarm.RLIO.Write(ph.conn, msg.Encode())
+				fmt.Printf("sent request for %v : %v", msg.Index(), msg.ReqLen())
+			}
+			fmt.Printf("sent %v msgs", len(msgs))
+		}
+
+	}
+}
+
+func (ph *PeerHandler) createReqMessages(index uint32) []*p2p.MsgRequest {
+	msgs := make([]*p2p.MsgRequest, 0, 3)
+	ti := ph.swarm.Tor.Info()
+
+	length := uint32(ti.PieceLen())
+	if int64(index) == ti.NumPieces()-1 {
+		length = uint32(ti.LastPieceLen())
+	}
+
+	offset := uint32(0)
+
+	for offset < length {
+		reqlen := uint32(math.Min(requestLength, float64(length-offset)))
+		msgs = append(msgs, p2p.NewMsgRequest(index, offset, reqlen))
+	}
+
+	return msgs
 }
 
 // pingLoop sends a keep alive message to the peer at a set interval

@@ -35,7 +35,8 @@ type TorInfo struct {
 	flist     filesd.FileList `info:"files"`
 	isSingle  bool            // Is this a single-file or multi-file torrent?
 
-	pm PieceMap
+	pm           PieceMap
+	lastPieceLen int64
 }
 
 // ============================================================================
@@ -67,6 +68,10 @@ func (ti *TorInfo) Files() filesd.FileList {
 
 func (ti *TorInfo) IsSingle() bool {
 	return ti.isSingle
+}
+
+func (ti *TorInfo) LastPieceLen() int64 {
+	return ti.lastPieceLen
 }
 
 // ============================================================================
@@ -169,15 +174,19 @@ func NewTorInfo(name string, pieceLen int64, hashes string, files []filesd.Entry
 		return nil, e
 	}
 
+	nPieces := int64(len(hashes) / 20)
+	lastLen := pieceLen - ((nPieces * pieceLen) - length)
+
 	return &TorInfo{
-		name:      name,
-		pieceLen:  pieceLen,
-		hashes:    hashes,
-		numPieces: int64(len(hashes) / 20),
-		length:    length,
-		flist:     flist,
-		isSingle:  len(files) == 1,
-		pm:        pm,
+		name:         name,
+		pieceLen:     pieceLen,
+		hashes:       hashes,
+		numPieces:    nPieces,
+		length:       length,
+		flist:        flist,
+		isSingle:     len(files) == 1,
+		pm:           pm,
+		lastPieceLen: lastLen,
 	}, nil
 
 }

@@ -122,9 +122,10 @@ func (tor *Torrent) String() string {
 	strb.WriteString(fmt.Sprintf(" Announce: [%s]\n", tor.announce))
 	strb.WriteString(fmt.Sprintf(" Infohash: [%s]\n", prettyHash))
 	plen, units := utils.Bytes4Humans(tor.info.PieceLen())
-	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v%s]\n", tor.info.NumPieces(), plen, units))
+	strb.WriteString(fmt.Sprintf("   Pieces: [%v x %v %s]\n", tor.info.NumPieces(), plen, units))
 	bsize, units := utils.Bytes4Humans(tor.info.Length())
 	strb.WriteString(fmt.Sprintf("   Length: [%.02f %s]\n", bsize, units))
+	strb.WriteString(fmt.Sprintf("   Length: [%v b]", tor.info.Length()))
 
 	if !tor.info.IsSingle() {
 		strb.WriteString("\nFiles:\n")

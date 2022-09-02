@@ -2,7 +2,6 @@ package swarm
 
 import (
 	"errors"
-	"fmt"
 	"log"
 
 	"gotor/p2p"
@@ -51,6 +50,7 @@ func (ph *PeerHandler) handleBitfield(bfMsg *p2p.MsgBitfield) error {
 
 	// Register
 	swarm.PPT.RegisterBF(ph, bf)
+	log.Printf("registered bitfield")
 
 	return nil
 }
@@ -59,7 +59,6 @@ func (ph *PeerHandler) handleRequest(reqMsg *p2p.MsgRequest) error {
 	// TODO: Cache pieces
 	s := ph.swarm
 	idx := int64(reqMsg.Index())
-	fmt.Printf("REQUEST SIZE: %v\n", reqMsg.ReqLen())
 	if s.Bf.Complete() || s.Bf.Get(idx) {
 		_, e := s.Fileio.ReadPiece(idx, ph.buf)
 		if e != nil {

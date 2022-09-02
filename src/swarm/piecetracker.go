@@ -1,8 +1,9 @@
 package swarm
 
 import (
-	"gotor/utils/ds"
 	"sync"
+
+	"gotor/utils/ds"
 
 	"gotor/bf"
 )
@@ -156,7 +157,7 @@ func (ppt *PeerPieceTracker) NextPiece(whom *PeerHandler) (uint32, bool) {
 		for cur != nil {
 			curPiece := cur.Data
 			// If the piece is needed
-			if ppt.bf.Get(int64(curPiece.index)) {
+			if !ppt.bf.Get(int64(curPiece.index)) {
 				// If the piece isn't taken by another peer, and
 				// the peer has the piece
 				if !curPiece.active && curPiece.peerSet.Has(whom) {

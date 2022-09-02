@@ -15,7 +15,22 @@ func PHDummy(id string) *PeerHandler {
 	}
 }
 
-// Creates a bitfield from a slice of "have" indices
+// Creates a bitfield with all bits set to true, except those in the
+// gots slice.
+func bfFromNeed(size int64, gots []int64) *bf.Bitfield {
+	pbf := bf.NewBitfield(size)
+	// Set them all
+	for i := int64(0); i < pbf.Nbits(); i++ {
+		pbf.Set(i, true)
+	}
+	for _, idx := range gots {
+		pbf.Set(idx, false)
+	}
+	return pbf
+}
+
+// Creates a bitfield with all bits set to false, except those in the
+// gots slice.
 func bfFromHave(size int64, gots []int64) *bf.Bitfield {
 	pbf := bf.NewBitfield(size)
 	for _, idx := range gots {
@@ -75,7 +90,7 @@ func TestPeerPieceTracker_NextPiece(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Make bitfield
-			bitfield := bfFromHave(int64(tt.size), tt.need)
+			bitfield := bfFromNeed(int64(tt.size), tt.need)
 
 			ppt := NewPeerPieceTracker(tt.size, bitfield)
 
